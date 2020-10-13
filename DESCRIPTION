@@ -1,0 +1,17 @@
+Package: duvernaygeomechmodel
+Title: A Geostatistical Model of Static Elastic Properties in the Duvernay Play
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "Scott",
+           family = "McKean",
+           role = c("aut", "cre"),
+           email = "scott.mckean@ucalgary.ca",
+           comment = c(ORCID = "0000-0001-5914-3928"))
+Description: This package holds the code, data, requirements, and notebooks for
+the paper entitled "A Geostatistical Model of Static Elastic Properties 
+in the Duvernay Play". 
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1
