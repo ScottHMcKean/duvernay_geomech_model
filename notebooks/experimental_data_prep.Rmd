@@ -1,0 +1,130 @@
+---
+title: "Data Preparation"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(duvernaygeomechmodel)
+```
+
+This notebook loads static (unconfined compressive strength and triaxial) and 
+dynamic (ultrasonic pulse transmission) data. It merges these two datasets
+in preparation for statistical model generation and does some exploratory data
+analysis.
+
+# Load files
+
+```{r}
+static_df = read_csv('../data/static_tests.csv')
+upt_df = read_csv('../data/upt_tests.csv')
+```
+
+# Merge triaxial and ultrasonic data
+
+First we nest the static data, omitting null values (mainly from bulk density).
+and grouping by well, depth, orientation, confining pressure, and deviatoric 
+stress.
+
+We fit a model of Vp and Vs against confining and deviatoric stressfor each 
+ultrasonic measurement 
+```{r}
+static_nest_no_res <- static_df %>% 
+  select(-yield_stress_dev, -residual_stress_dev) %>%
+  mutate(deviatoric_stress = peak_stress_dev / 2) %>%
+  na.omit() %>%
+  mutate(conf_pres_group = confining_pressure, 
+         dev_stress_group = deviatoric_stress,
+         well_group = well,
+         depth_group = round_depth,
+         orient_group = orientation) %>%
+  group_by(well_group, depth_group, orient_group, conf_pres_group, dev_stress_group) %>%
+  nest() %>%
+  rename(confining_pressure = conf_pres_group, 
+         deviatoric_stress = dev_stress_group,
+         well = well_group,
+         round_depth = depth_group,
+         orientation = orient_group)
+
+static_nest_w_res <- static_df %>% 
+  select(-yield_stress_dev) %>%
+  mutate(deviatoric_stress = peak_stress_dev / 2) %>%
+  na.omit() %>%
+  mutate(conf_pres_group = confining_pressure, 
+         dev_stress_group = deviatoric_stress,
+         well_group = well,
+         depth_group = round_depth,
+         orient_group = orientation) %>%
+  group_by(well_group, depth_group, orient_group, conf_pres_group, dev_stress_group) %>%
+  nest() %>%
+  rename(confining_pressure = conf_pres_group, 
+         deviatoric_stress = dev_stress_group,
+         well = well_group,
+         round_depth = depth_group,
+         orientation = orient_group)
+
+upt_nest <- upt_df %>%
+  group_by(well, round_depth, orientation) %>%
+  nest() %>%
+  mutate(vp_model = map(data, fit_vp_model)) %>%
+  mutate(vs_model = map(data, fit_vs_model))
+```
+
+We then use these models to provide a prediction of Vp and Vs for the conditions
+present in each triaxial test, for the static dataframes with and without residual
+stresses.
+
+This chunk merges the tests with or without residual stress results.
+
+```{r}
+vp_df <- upt_nest %>%
+  inner_join(static_nest_no_res, by = c('well','round_depth','orientation')) %>%
+  rename(upt_data = data.x, trx_data = data.y) %>%
+  map2_df(.x = .$vp_model, .y = .$trx_data, 
+          .f = ~augment(.x, newdata = .y)) %>%
+  rename(pred_vp = .fitted, se_vp = .se.fit)
+
+vs_df <- upt_nest %>%
+  inner_join(static_nest_no_res, by = c('well','round_depth','orientation')) %>%
+  rename(upt_data = data.x, trx_data = data.y) %>%
+  map2_df(.x = .$vs_model, .y = .$trx_data, 
+          .f = ~augment(.x, newdata = .y)) %>%
+  rename(pred_vs = .fitted, se_vs = .se.fit) %>%
+  select(pred_vs, se_vs)
+
+merged_no_res <-  cbind(vp_df, vs_df) %>%
+  mutate(se_vp_per = se_vp/pred_vp) %>%
+  mutate(se_vs_per = se_vs/pred_vs) %>%
+  filter(!is.na(se_vp), !is.na(se_vs)) %>%
+  filter(se_vp_per < 0.1) %>%
+  filter(se_vs_per < 0.1)
+
+write_csv(merged_no_res, '../data/merged_tests_no_res.csv')
+```
+
+This chunk merges the tests with residual stress results only.
+
+```{r}
+vp_df <- upt_nest %>%
+  inner_join(static_nest_w_res, by = c('well','round_depth','orientation')) %>%
+  rename(upt_data = data.x, trx_data = data.y) %>%
+  map2_df(.x = .$vp_model, .y = .$trx_data, 
+          .f = ~augment(.x, newdata = .y)) %>%
+  rename(pred_vp = .fitted, se_vp = .se.fit)
+
+vs_df <- upt_nest %>%
+  inner_join(static_nest_w_res, by = c('well','round_depth','orientation')) %>%
+  rename(upt_data = data.x, trx_data = data.y) %>%
+  map2_df(.x = .$vs_model, .y = .$trx_data, 
+          .f = ~augment(.x, newdata = .y)) %>%
+  rename(pred_vs = .fitted, se_vs = .se.fit) %>%
+  select(pred_vs, se_vs)
+
+merged_w_res <- cbind(vp_df, vs_df) %>%
+  mutate(se_vp_per = se_vp/pred_vp) %>%
+  mutate(se_vs_per = se_vs/pred_vs) %>%
+  filter(!is.na(se_vp), !is.na(se_vs)) %>%
+  filter(se_vp_per < 0.1) %>%
+  filter(se_vs_per < 0.1)
+
+write_csv(merged_w_res, '../data/merged_tests_w_res.csv')
+```
