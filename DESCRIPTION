@@ -1,5 +1,5 @@
 Package: duvernaygeomechmodel
-Title: A Geostatistical Model of Static Elastic Properties in the Duvernay Play
+Title: A Geostatistical Model of Geomechanical Properties in the Duvernay Play
 Version: 0.0.0.9000
 Authors@R: 
     person(given = "Scott",
@@ -8,8 +8,9 @@ Authors@R:
            email = "scott.mckean@ucalgary.ca",
            comment = c(ORCID = "0000-0001-5914-3928"))
 Description: This package holds the code, data, requirements, and notebooks for
-the paper entitled "A Geostatistical Model of Static Elastic Properties 
-in the Duvernay Play". 
+    the paper entitled "A Geostatistical Model of Geomechanical Properties in the Duvernay Play". It consists of two main parts, a machine learning
+    workflow that relies on MLR and IML, and a geostatistical workflow that
+    relies on GSTAT.
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
