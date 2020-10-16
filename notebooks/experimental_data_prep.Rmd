@@ -94,11 +94,12 @@ vs_df <- upt_nest %>%
 merged_no_res <-  cbind(vp_df, vs_df) %>%
   mutate(se_vp_per = se_vp/pred_vp) %>%
   mutate(se_vs_per = se_vs/pred_vs) %>%
+  filter(pred_vp >0, pred_vs >0) %>%
   filter(!is.na(se_vp), !is.na(se_vs)) %>%
   filter(se_vp_per < 0.1) %>%
   filter(se_vs_per < 0.1)
 
-write_csv(merged_no_res, '../data/merged_tests_no_res.csv')
+write_csv(merged_no_res, '../data/merged_tests_no_residual.csv')
 ```
 
 This chunk merges the tests with residual stress results only.
@@ -122,9 +123,10 @@ vs_df <- upt_nest %>%
 merged_w_res <- cbind(vp_df, vs_df) %>%
   mutate(se_vp_per = se_vp/pred_vp) %>%
   mutate(se_vs_per = se_vs/pred_vs) %>%
+  filter(pred_vp >0, pred_vs >0) %>%
   filter(!is.na(se_vp), !is.na(se_vs)) %>%
   filter(se_vp_per < 0.1) %>%
   filter(se_vs_per < 0.1)
 
-write_csv(merged_w_res, '../data/merged_tests_w_res.csv')
+write_csv(merged_w_res, '../data/merged_tests_w_residual.csv')
 ```

@@ -1,0 +1,22 @@
+---
+title: "Data Preparation"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(duvernaygeomechmodel)
+```
+
+This notebook conducts exploratory data analysis on the experimental data
+
+# Load files
+
+```{r}
+merged_no_res = read_csv('../data/merged_tests_no_residual.csv')
+merged_w_res = read_csv('../data/merged_tests_w_residual.csv')
+```
+
+```{r}
+ggplot(merged_no_res) +
+  geom_histogram(aes(x=pred_vp, group=group))
+```
