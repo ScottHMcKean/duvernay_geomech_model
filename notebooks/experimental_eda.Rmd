@@ -14,9 +14,119 @@ This notebook conducts exploratory data analysis on the experimental data
 ```{r}
 merged_no_res = read_csv('../data/merged_tests_no_residual.csv')
 merged_w_res = read_csv('../data/merged_tests_w_residual.csv')
+
 ```
 
+# Brazilian tests
+
+Brazilian tests suggest that the carbonate facies has a higher tensile strength than the shale facies. But this is statistically rejected by a Welsh's t-test.
+
 ```{r}
-ggplot(merged_no_res) +
-  geom_histogram(aes(x=pred_vp, group=group))
+brazilian = read_csv('../data/brazilian_tests.csv')
+
+ggplot(brazilian) +
+  geom_boxplot(aes(x = group, y = tensile_strength, colour = group)) +
+  geom_jitter(aes(x = group, y = tensile_strength, colour = group), width = 0.25) +
+  facet_grid(. ~ orientation) +
+  labs(y = 'Tensile Strength (MPa)',
+       x = '',
+       title = '') +
+  scale_color_manual(name = '', values = c('blue','dark green'))+
+  ggsave('../output/brazilian_results.pdf', height = 6, width = 6) +
+  ggsave('../output/brazilian_results.png', height = 6, width = 6)
+
+brazilian %>%
+  group_by(group) %>%
+  summarize(n = n(),
+            mean = mean(tensile_strength),
+            sd = sd(tensile_strength))
+
+t.test(tensile_strength ~ group, data = brazilian)
+```
+
+# UCS tests
+
+The UCS results show significant strength anisotropy in both carbonate and shale formations.
+
+```{r}
+ucs = read_csv('../data/static_tests.csv') %>%
+  filter(confining_pressure < 1)
+
+ggplot(ucs) +
+  geom_boxplot(aes(x = group, y = peak_stress_dev, colour = group)) +
+  geom_jitter(aes(x = group, y = peak_stress_dev, colour = group), width = 0.25) +
+  facet_grid(. ~ orientation) +
+  labs(y = 'Unconfined Compressive Strength (MPa)',
+       x = '',
+       title = '') +
+  scale_color_manual(name = '', values = c('blue','dark green'))+
+  ggsave('../output/ucs_results.pdf', height = 6, width = 6) +
+  ggsave('../output/ucs_results.png', height = 6, width = 6)
+
+ucs %>%
+  group_by(group, orientation) %>%
+  summarize(n = n(),
+            mean = mean(peak_stress_dev),
+            sd = sd(peak_stress_dev))
+
+# shale anisotropy test
+t.test(
+  peak_stress_dev ~ orientation, 
+  data = ucs %>% filter(group == 'shale', orientation != 'oblique')
+  )
+
+# are oblique samples the weakest?
+t.test(
+  peak_stress_dev ~ orientation, 
+  data = ucs %>% filter(group == 'shale', orientation != 'vertical')
+  )
+
+# carbonate anisotropy test
+t.test(
+  peak_stress_dev ~ orientation, 
+  data = ucs %>% filter(group == 'carbonate', orientation != 'oblique')
+  )
+
+```
+
+# Triaxial Results
+
+```{r}
+triaxial = read_csv('../data/static_tests.csv') %>%
+  filter(confining_pressure > 0)
+
+p1 = ggplot(triaxial) +
+  geom_histogram(aes(x = youngs_modulus, fill = orientation, y = ..ncount..), bins = 50) +
+  facet_grid(. ~ group) +
+  coord_flip() +
+  labs(y = 'Normalized Count',
+       x = 'Young\'s Modulus (GPa)',
+       title = '(a) Young\'s Modulus') +
+  scale_color_manual(name = '', values = c('blue','dark green')) +
+  theme(legend.position = "bottom")
+
+p2 = ggplot(triaxial) +
+  geom_histogram(aes(x = poisson_ratio, fill = orientation, y = ..ncount..), bins = 50) +
+  facet_grid(. ~ group) +
+  coord_flip() +
+  labs(y = 'Normalized Count',
+       x = 'Poisson\'s Ratio',
+       title = '(b) Poisson\'s Ratio') +
+  scale_color_manual(name = '', values = c('blue','dark green')) +
+  theme(legend.position = "bottom")
+
+p3 = ggplot(triaxial) +
+  geom_boxplot(aes(x = group, y = bulk_density, colour = group)) +
+  geom_jitter(aes(x = group, y = bulk_density, colour = group), width = 0.25) +
+  ylim(2.4,2.8) +
+  labs(y = 'Bulk Density (g/cc)',
+       x = '',
+       title = '(c) Bulk Density') +
+  scale_color_manual(name = '', values = c('blue','dark green')) +
+  theme(legend.position = "bottom")
+
+grobs = arrangeGrob(grobs=mat, widths = unit(c(4.5,4.5,3),"in"), heights = unit(c(6),"in"))
+
+ggsave("../output/triaxial_results.pdf", grobs, width = 12, height = 6)
+ggsave("../output/triaxial_results.png", grobs, width = 12, height = 6, dpi=600)
 ```
