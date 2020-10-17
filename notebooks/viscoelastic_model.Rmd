@@ -1,0 +1,71 @@
+---
+title: "Viscoelastic Models"
+author: "Scott McKean"
+date: "9/4/2019"
+output: html_document
+---
+
+```{r setup}
+library(tidyverse)
+```
+
+Notebook describing the calculation of maxwell and voight viscoelastic models
+to generate a diagram similar to Hagin (2004). 
+
+```{r}
+youngs = 20E9 # Young's Modulus (Pa)
+viscosity = 1E14 # Solid Viscosity (Pa-s)
+t_r = viscosity / youngs
+load_freq = 10^seq(-9,7,0.1) # Frequency (Hz)
+load_freq_breaks = 10^seq(-9,7,2)
+t = 1/load_freq # Time to max amplitude
+stress_amp = 5E6 # Stress amplitude (Pa)
+strain = stress_amp / youngs
+
+stiffness_df <- data.frame('load_freq' = load_freq,
+                           't' = t)
+
+# Voight stiffness
+stiffness_df$voight = youngs/2 + (viscosity * load_freq)*strain
+
+# Maxwell stiffness
+stiffness_df$maxwell = youngs*1.5 * exp(-t/t_r)
+
+# Standard Linear Solid
+stiffness_df$sls =  youngs/2 + youngs/2 * exp(-t/t_r)
+```
+
+Make plot for journal
+
+```{r}
+ggplot(stiffness_df) +
+  geom_line(aes(x = load_freq, y = maxwell/1E9, colour = 'Maxwell\n\n'), lwd = 1) +
+  geom_line(aes(x = load_freq, y = sls/1E9, colour = 'SLS\n\n'), lwd = 1) +
+  scale_x_log10(name = 'Load Frequency (Hz)', breaks = load_freq_breaks,
+                minor_breaks = NULL) +
+  geom_vline(xintercept = 2E-3, linetype = 3, lwd = 0.75) +
+  geom_text(aes(x=2E-3, label="hydraulic\nfracturing", y=5), 
+            angle=90, vjust = 1.1)+
+  geom_vline(xintercept = 1E6, linetype = 3, lwd = 0.75) +
+  geom_text(aes(x=1E6, label="ultrasonic pulse\ntransmission", y=5),
+            angle=90, vjust = 1.1)+
+  geom_vline(xintercept = 1E4, linetype = 3, lwd = 0.75) +
+  geom_text(aes(x=1E4, label="sonic dipole", y=5), 
+            angle=90, vjust = 1.1)+
+  geom_vline(xintercept = 5E1, linetype = 3, lwd = 0.75) +
+  geom_text(aes(x=5E1, label="reflection\nseismic", y=5), 
+            angle=90, vjust = 1.1)+
+  geom_vline(xintercept = 2.5E-4, linetype = 3, lwd = 0.75) +
+  geom_text(aes(x=2.5E-4, label="triaxial testing", y=5), 
+            angle=90, vjust = 1.1)+
+  geom_vline(xintercept = 1E-8, linetype = 3, lwd = 0.75) +
+  geom_text(aes(x=1E-8, label="reservoir\ndepletion", y=5),
+            angle=90, vjust = 1.1) +
+  ylim(0, 30) +
+  ylab('Stiffness (GPa)') +
+  scale_color_discrete(name = 'Stiffness Model') +
+  theme_minimal() +
+  theme(legend.position = c(0.22, 0.85)) +
+  ggsave('stiffness_model_plot.eps', height = 6, width = 6)
+  ggsave('stiffness_model_plot.png', height = 6, width = 6)
+```

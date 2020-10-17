@@ -9,14 +9,6 @@ library(duvernaygeomechmodel)
 
 This notebook conducts exploratory data analysis on the experimental data
 
-# Load files
-
-```{r}
-merged_no_res = read_csv('../data/merged_tests_no_residual.csv')
-merged_w_res = read_csv('../data/merged_tests_w_residual.csv')
-
-```
-
 # Brazilian tests
 
 Brazilian tests suggest that the carbonate facies has a higher tensile strength than the shale facies. But this is statistically rejected by a Welsh's t-test.
@@ -31,7 +23,8 @@ ggplot(brazilian) +
   labs(y = 'Tensile Strength (MPa)',
        x = '',
        title = '') +
-  scale_color_manual(name = '', values = c('blue','dark green'))+
+  scale_color_manual(name = '', values = c('blue','dark green')) +
+  theme(legend.position = "none") +
   ggsave('../output/brazilian_results.pdf', height = 6, width = 6) +
   ggsave('../output/brazilian_results.png', height = 6, width = 6)
 
@@ -59,9 +52,10 @@ ggplot(ucs) +
   labs(y = 'Unconfined Compressive Strength (MPa)',
        x = '',
        title = '') +
-  scale_color_manual(name = '', values = c('blue','dark green'))+
+  scale_color_manual(name = '', values = c('blue','dark green')) +
+  theme(legend.position = "none") +
   ggsave('../output/ucs_results.pdf', height = 6, width = 6) +
-  ggsave('../output/ucs_results.png', height = 6, width = 6)
+  ggsave('../output/ucs_results.png', height = 6, width = 6) 
 
 ucs %>%
   group_by(group, orientation) %>%
@@ -69,7 +63,7 @@ ucs %>%
             mean = mean(peak_stress_dev),
             sd = sd(peak_stress_dev))
 
-# shale anisotropy test
+# are vertical shale samples stronger than horizontal ones?
 t.test(
   peak_stress_dev ~ orientation, 
   data = ucs %>% filter(group == 'shale', orientation != 'oblique')
@@ -81,7 +75,7 @@ t.test(
   data = ucs %>% filter(group == 'shale', orientation != 'vertical')
   )
 
-# carbonate anisotropy test
+# are vertical carbonate samples stronger than horizontal ones?
 t.test(
   peak_stress_dev ~ orientation, 
   data = ucs %>% filter(group == 'carbonate', orientation != 'oblique')
@@ -125,8 +119,69 @@ p3 = ggplot(triaxial) +
   scale_color_manual(name = '', values = c('blue','dark green')) +
   theme(legend.position = "bottom")
 
-grobs = arrangeGrob(grobs=mat, widths = unit(c(4.5,4.5,3),"in"), heights = unit(c(6),"in"))
-
+grobs = arrangeGrob(grobs=list(p1,p2,p3), widths = unit(c(4.5,4.5,3),"in"), heights = unit(c(6),"in"))
 ggsave("../output/triaxial_results.pdf", grobs, width = 12, height = 6)
 ggsave("../output/triaxial_results.png", grobs, width = 12, height = 6, dpi=600)
+
+# are carbonate samples stiffer than shales?
+t.test(
+  youngs_modulus ~ group, 
+  data = triaxial %>% filter(orientation == 'vertical')
+  )
+
+t.test(
+  youngs_modulus ~ group, 
+  data = triaxial %>% filter(orientation == 'horizontal')
+  )
+
+# What would the difference and RMSE of YM and PR be at a standardized confining pressure?
+ym_carb <- lm(youngs_modulus ~ confining_pressure, data = triaxial %>% filter(group == 'carbonate'))
+predict(ym_carb, newdata = data.frame(confining_pressure = 20))
+rmse(ym_carb)
+
+ym_shale <- lm(youngs_modulus ~ confining_pressure, data = triaxial %>% filter(group == 'shale'))
+predict(ym_shale, newdata = data.frame(confining_pressure = 20))
+rmse(ym_shale)
+
+pr_carb <- lm(poisson_ratio ~ confining_pressure, data = triaxial %>% filter(group == 'carbonate'))
+predict(pr_carb, newdata = data.frame(confining_pressure = 20))
+rmse(pr_carb)
+
+pr_shale <- lm(poisson_ratio ~ confining_pressure, data = triaxial %>% filter(group == 'shale'))
+predict(pr_shale, newdata = data.frame(confining_pressure = 20))
+rmse(pr_shale)
+```
+
+# Ultrasonic Results
+
+```{r}
+upt_df = read_csv('../data/upt_tests.csv') %>% 
+  select(group, vp, vs, confining_pressure, deviatoric_stress, orientation, measured_depth) %>%
+  arrange()
+
+upt_df_gather <- gather(
+  upt_df, key = 'test_type', value = 'value', 
+  -group, -confining_pressure, -deviatoric_stress, -orientation, -measured_depth
+  )
+
+ggplot(upt_df_gather) +
+  geom_point(aes(x = (confining_pressure + deviatoric_stress)/2, 
+                 y = value, 
+                 fill = test_type), shape = 21) +
+  facet_grid(. ~ group + orientation) +
+  labs(y = 'Velocity (m/s)',
+       x = 'Mean Stress (MPa)',
+       title = '') +
+  scale_fill_manual(name = '', values = alpha(c("blue", "red"), .2)) +
+  scale_shape_discrete(solid=TRUE) +
+  theme(legend.title = element_blank()) +
+  theme(legend.position = c(0.04, 0.12)) +
+  ggsave('../output/upt_scatter.pdf', height = 6, width = 12)
+
+
+t.test(
+  vs ~ orientation, 
+  data = upt_df %>% filter(orientation != 'oblique')
+  )
+
 ```

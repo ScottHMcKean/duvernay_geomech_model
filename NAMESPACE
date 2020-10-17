@@ -2,3 +2,4 @@
 
 export(fit_vp_model)
 export(fit_vs_model)
+export(rmse)
