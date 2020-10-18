@@ -1,0 +1,33 @@
+id,package,desc,task.classif,task.regr,task.surv
+anova.test,,ANOVA Test for binary and multiclass classification tasks,TRUE,FALSE,FALSE
+auc,,AUC filter for binary classification tasks,TRUE,FALSE,FALSE
+carscore,care,CAR scores,FALSE,TRUE,FALSE
+FSelector_chi.squared,FSelector,Chi-squared statistic of independence between feature and target,TRUE,TRUE,FALSE
+FSelector_gain.ratio,FSelector,Chi-squared statistic of independence between feature and target,TRUE,TRUE,FALSE
+FSelector_information.gain,FSelector,Entropy-based information gain between feature and target,TRUE,TRUE,FALSE
+FSelector_oneR,FSelector,oneR association rule,TRUE,TRUE,FALSE
+FSelector_relief,FSelector,RELIEF algorithm,TRUE,TRUE,FALSE
+FSelector_symmetrical.uncertainty,FSelector,Entropy-based symmetrical uncertainty between feature and target,TRUE,TRUE,FALSE
+FSelectorRcpp_gain.ratio,FSelectorRcpp,"Entropy-based Filters: Algorithms that find ranks of importance of discrete attributes, basing on their entropy with a continous class attribute",TRUE,TRUE,FALSE
+FSelectorRcpp_information.gain,FSelectorRcpp,"Entropy-based Filters: Algorithms that find ranks of importance of discrete attributes, basing on their entropy with a continous class attribute",TRUE,TRUE,FALSE
+FSelectorRcpp_symmetrical.uncertainty,FSelectorRcpp,"Entropy-based Filters: Algorithms that find ranks of importance of discrete attributes, basing on their entropy with a continous class attribute",TRUE,TRUE,FALSE
+kruskal.test,,Kruskal Test for binary and multiclass classification tasks,TRUE,FALSE,FALSE
+linear.correlation,,Pearson correlation between feature and target,FALSE,TRUE,FALSE
+mrmr,mRMRe,"Minimum redundancy, maximum relevance filter",FALSE,TRUE,TRUE
+party_cforest.importance,party,Permutation importance of random forest fitted in package 'party',TRUE,TRUE,TRUE
+permutation.importance,,Aggregated difference between feature permuted and unpermuted predictions,TRUE,TRUE,TRUE
+praznik_CMIM,praznik,Minimal conditional mutual information maximisation filter,TRUE,TRUE,FALSE
+praznik_DISR,praznik,Double input symmetrical relevance filter,TRUE,FALSE,FALSE
+praznik_JMI,praznik,Joint mutual information filter,TRUE,FALSE,FALSE
+praznik_JMIM,praznik,Minimal joint mutual information maximisation filter,TRUE,FALSE,FALSE
+praznik_MIM,praznik,conditional mutual information based feature selection filters,TRUE,FALSE,FALSE
+praznik_MRMR,praznik,Minimum redundancy maximal relevancy filter,TRUE,FALSE,FALSE
+praznik_NJMIM,praznik,Minimal normalised joint mutual information maximisation filter,TRUE,FALSE,FALSE
+randomForest_importance,randomForest,Importance based on OOB-accuracy or node inpurity of random forest fitted in package 'randomForest'.,TRUE,TRUE,FALSE
+randomForestSRC_importance,randomForestSRC,Importance of random forests fitted in package 'randomForestSRC'. Importance is calculated using argument 'permute'.,TRUE,TRUE,TRUE
+randomForestSRC_var.select,randomForestSRC,Minimal depth of / variable hunting via method var.select on random forests fitted in package 'randomForestSRC'.,TRUE,TRUE,TRUE
+ranger_impurity,ranger,Variable importance based on ranger impurity importance,TRUE,TRUE,FALSE
+ranger_permutation,ranger,Variable importance based on ranger permutation importance,TRUE,TRUE,TRUE
+rank.correlation,,Spearman's correlation between feature and target,FALSE,TRUE,FALSE
+univariate.model.score,,"Resamples an mlr learner for each input feature individually. The resampling performance is used as filter score, with rpart as default learner.",TRUE,TRUE,TRUE
+variance,,A simple variance filter,TRUE,TRUE,TRUE

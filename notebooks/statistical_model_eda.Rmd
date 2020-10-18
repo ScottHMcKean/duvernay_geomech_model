@@ -1,0 +1,112 @@
+---
+title: "Untitled"
+author: "Scott McKean"
+date: "10/8/2019"
+output: html_document
+---
+
+```{r setup}
+library(duvernaygeomechmodel)
+```
+
+Load datasets
+
+```{r}
+mldf_wres = read_csv("../data/merged_tests_w_residual.csv") %>%
+  mutate(brittleness = (peak_stress_dev - residual_stress_dev)/peak_stress_dev)
+```
+
+```{r}
+num_cols = c("confining_pressure", "peak_stress_dev", 
+"residual_stress_dev", "youngs_modulus", "poisson_ratio", "bulk_density", 
+"brittleness", "pred_vp", "pred_vs")
+
+mldf_num <- mldf_wres %>% 
+  select(num_cols) %>%
+  rename(
+    "Confining Pressure (MPa)" = confining_pressure,
+    "Peak Stress (MPa)" = peak_stress_dev, 
+    "Residual Stress (MPa)" = residual_stress_dev, 
+    "Young's Modulus (GPa)" = youngs_modulus,
+    "Poisson's Ratio" = poisson_ratio, 
+    "Bulk Density (g/cm3)" = bulk_density, 
+    "Brittleness (MPa)" = brittleness, 
+    "Compressional Sonic (m/s)" = pred_vp, 
+    "Shear Sonic (m/s)" = pred_vs)
+```
+
+Correlation Plot
+
+```{r}
+ggcorrplot(cor(mldf_num),lab = TRUE, type = 'lower') +
+  theme(legend.position = c(0.2,0.75)) +
+  ggsave('../output/corrplot.pdf', height = 6, width = 6) +
+  ggsave('../output/corrplot.pdf', height = 6, width = 6, dpi=600)
+  
+```
+
+QQPlot
+
+```{r}
+mldf_gather <- mldf_num %>%
+  gather()
+
+ggplot(mldf_gather, aes(sample = value)) +
+  geom_qq() +
+  geom_qq_line() +
+  facet_wrap(. ~ key, scales = 'free_y') +
+  ylab('Sample Value') +
+  xlab('Theoretical Value') +
+  ggsave('../output/qq_plot_facet.pdf', height = 6, width = 12) +
+  ggsave('../output/qq_plot_facet.pdf', height = 6, width = 12, dpi=600)
+```
+
+Filter-based feature importance using MLR and information gain - inconclusive.
+
+```{r}
+feats = c("orientation", "group", "confining_pressure", "peak_stress_dev", 
+"residual_stress_dev", "bulk_density", "pred_vp", "pred_vs")
+
+targets = c("youngs_modulus", "", "")
+
+mldf_wres_ym_norm = normalizeFeatures(
+  mldf_wres %>% select(feats, youngs_modulus),
+  target ="youngs_modulus")
+
+regr_fv_ym = generateFilterValuesData(
+  makeRegrTask(data = mldf_wres_ym_norm, target = "youngs_modulus"), 
+  method = c("FSelector_information.gain")
+  )
+
+ym_fv_plot <- plotFilterValues(regr_fv_br) +
+  ggtitle('Young\'s Modulus')
+
+mldf_wres_pr_norm = normalizeFeatures(
+  mldf_wres %>% select(feats, poisson_ratio),
+  target ="poisson_ratio")
+
+regr_fv_pr = generateFilterValuesData(
+  makeRegrTask(data = mldf_wres_pr_norm, target = "poisson_ratio"), 
+  method = c("FSelector_information.gain")
+  )
+
+pr_fv_plot <- plotFilterValues(regr_fv_pr) +
+  ggtitle('Poisson\'s Ratio')
+
+mldf_wres_br_norm = normalizeFeatures(
+  mldf_wres %>% select(feats, brittleness),
+  target ="brittleness")
+
+regr_fv_br = generateFilterValuesData(
+  makeRegrTask(data = mldf_wres_br_norm, target = "brittleness"), 
+  method = c("FSelector_information.gain")
+  )
+
+br_fv_plot <- plotFilterValues(regr_fv_br) +
+  ggtitle('Brittleness')
+
+grobs = arrangeGrob(grobs=list(ym_fv_plot,pr_fv_plot,br_fv_plot), widths = unit(c(4,4,4),"in"), heights = unit(c(6),"in"))
+ggsave("../output/filter_importance.pdf", grobs, width = 12, height = 6)
+ggsave("../output/filter_importance.pdf", grobs, width = 12, height = 6, dpi=600)
+```
+
