@@ -29,126 +29,470 @@ Set features
 aux_cols <- c("well", "round_depth", "se_vp", "se_vs", "se_vp_per", "se_vs_per")
 
 features <- c("orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
-                "bulk_density", "group", "deviatoric_stress")
+              "bulk_density", "group", "deviatoric_stress")
 
 targets <- c("youngs_modulus", "poisson_ratio", "brittleness")
 ```
 
+The following functions generate models for Young's Modulus:
+- YM - All features - GLM
+- YM - No Group - GLM
+- YM - No VS - GLM
+- YM - All features - MARS
+- YM - No Group - MARS
+- YM - No VS - MARS
+- YM - All features - Random Forest
+- YM - No Group - Random Forest
+- YM - No VS - Random Forest
+
 ```{r}
-target = "youngs_modulus"
-
-features =  c("orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
-                "bulk_density", "deviatoric_stress")
-
-model_type = "regr.glmnet" #regr.mars, regr.ranger
-
-pset= makeParamSet(
-  makeNumericParam('alpha',lower = 0, upper = 1),
-  makeIntegerParam('lambda', lower = -4, upper = 1, trafo = function(x) 10^x)
-)
-
-prefix = 'ym_glm_all'
-
-### START FUNCTION - target, features, model_type, pset, prefix
-
-ml_df = mldf_nores %>% 
-  select(features, target)
-
-set.seed(1)
-train_rows = sample(nrow(ml_df)*0.9)
-train = ml_df[train_rows,]
-test = ml_df[-train_rows,]
-
-learner = makeLearner(model_type)
-
-train_task = makeRegrTask(data = train, target = target)
-test_task = makeRegrTask(data = test, target = target)
-all_task = makeRegrTask(data = ml_df, target = target)
-
-meas = list(mlr::mae, mlr::rmse)
-
-tune_res = tuneParams(
-  learner, train_task, resampling=cv5, par.set=pset, 
-  control=makeTuneControlMBO(budget = 100L),
-  measures=meas
-)
-
-dir.create(paste0('../output/',prefix), showWarnings = FALSE)
-write_rds(tune_res, paste0('../output/',prefix,"/tune_results.rds"))
-
-# set hyperparameters
-tuned_learner = setHyperPars(learner = learner, par.vals = tune_res$x)
-
-# train final model for performance and interpretation
-model = train(tuned_learner, train_task)
-test_predict = predict(model, newdata=test)
-train_predict = predict(model, newdata=train)
-
-predictor = Predictor$new(model, data = ml_df)
-
-# monte-carlo performance measures
-resample = mlr::resample(
-  tuned_learner, all_task, 
-  makeResampleDesc("Subsample", iters=500, split=4/5, predict='both'),  
-  measures = meas,
-  show.info = FALSE
+# YM - All features - GLM
+generate_model(
+  target = "youngs_modulus",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
+    "bulk_density", "group", "deviatoric_stress"
+    ),
+  model_type = "regr.glmnet",
+  pset= makeParamSet(
+    makeNumericParam('alpha',lower = 0, upper = 1),
+    makeIntegerParam('lambda', lower = -4, upper = 1, trafo = function(x) 10^x)
+    ),
+  prefix = 'ym_glm_all'
   )
 
-model_res = get_resample_regr_res(resample)
-model_res$train_perf = performance(predict(model, newdata=train), measures = meas)
-model_res$test_perf = performance(predict(model, newdata=test), measures = meas)
-model_res$model = model
-model_res$tuned_learner = tuned_learner
+# YM - No Group - GLM
+generate_model(
+  target = "youngs_modulus",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
+    "bulk_density", "deviatoric_stress"
+    ),
+  model_type = "regr.glmnet",
+  pset= makeParamSet(
+    makeNumericParam('alpha',lower = 0, upper = 1),
+    makeIntegerParam('lambda', lower = -4, upper = 1, trafo = function(x) 10^x)
+    ),
+  prefix = 'ym_glm_nogroup'
+  )
 
-sink(paste0('../output/',prefix,"/model_results.txt"))
-print(model_res)
-sink()
+# YM - No VS - GLM
+generate_model(
+  target = "youngs_modulus",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vp', 
+    "bulk_density", "deviatoric_stress", "group"
+    ),
+  model_type = "regr.glmnet",
+  pset= makeParamSet(
+    makeNumericParam('alpha',lower = 0, upper = 1),
+    makeIntegerParam('lambda', lower = -4, upper = 1, trafo = function(x) 10^x)
+    ),
+  prefix = 'ym_glm_novs'
+  )
 
-write_rds(model_res, paste0('../output/',prefix,"/resample.rds"))
+# YM - All features - MARS
+generate_model(
+  target = "youngs_modulus",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
+    "bulk_density", "group", "deviatoric_stress"
+    ),
+  model_type = "regr.mars",
+  pset= makeParamSet(
+    makeDiscreteParam('degree',values=c(1,2,3)),
+    makeIntegerParam('nk', lower = 1, upper = 30)
+    ),
+  prefix = 'ym_mars_all'
+  )
 
-# PLOT RESIDUALS
-p1 = plotResiduals(train_predict,loess.smooth=FALSE) +
-  geom_abline(slope=1,linetype = "dashed") +
-  ggtitle("Training Set") +
-  theme_minimal()
+# YM - No Group - MARS
+generate_model(
+  target = "youngs_modulus",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
+    "bulk_density", "deviatoric_stress"
+    ),
+  model_type = "regr.mars",
+  pset= makeParamSet(
+    makeDiscreteParam('degree',values=c(1,2,3)),
+    makeIntegerParam('nk', lower = 1, upper = 30)
+    ),
+  prefix = 'ym_mars_nogroup'
+  )
 
-p2 = plotResiduals(test_predict,loess.smooth=FALSE) +
-  geom_abline(slope=1,linetype = "dashed") +
-  ggtitle("Test Set") +
-  theme_minimal()
+# YM - No Group, No VS - MARS
+generate_model(
+  target = "youngs_modulus",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vp', 
+    "bulk_density", "group", "deviatoric_stress"
+    ),
+  model_type = "regr.mars",
+  pset= makeParamSet(
+    makeDiscreteParam('degree',values=c(1,2,3)),
+    makeIntegerParam('nk', lower = 1, upper = 30)
+    ),
+  prefix = 'ym_mars_novs'
+  )
 
-ggsave(paste0('../output/',prefix,"/residual_plot.pdf"), 
-       arrangeGrob(grobs = list(p1,p2), nrow=1),
-       width = 6, height = 6)
+# YM - All features - Random Forest
+generate_model(
+  target = "youngs_modulus",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
+    "bulk_density", "group", "deviatoric_stress"
+    ),
+  model_type = "regr.ranger",
+  pset= makeParamSet(
+    makeIntegerParam('mtry', lower = 1L, upper = 6L),
+    makeIntegerParam('num.trees', lower = 10L, upper = 200L),
+    makeIntegerParam('min.node.size', lower = 0, upper = 1, trafo = function(x) 80^x),
+    makeNumericParam('sample.fraction', lower = 0.2, upper = 0.9)
+  ),
+  prefix = 'ym_rf_all'
+  )
 
-# IMPORTANCE & INTERACTION PLOTS
-importance = FeatureImp$new(predictor, loss='mae', n.repetitions = 50)
+# YM - No Group - Random Forest
+generate_model(
+  target = "youngs_modulus",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
+    "bulk_density", "deviatoric_stress"
+    ),
+  model_type = "regr.ranger",
+  pset= makeParamSet(
+    makeIntegerParam('mtry', lower = 1L, upper = 6L),
+    makeIntegerParam('num.trees', lower = 10L, upper = 200L),
+    makeIntegerParam('min.node.size', lower = 0, upper = 1, trafo = function(x) 80^x),
+    makeNumericParam('sample.fraction', lower = 0.2, upper = 0.9)
+  ),
+  prefix = 'ym_rf_nogroup'
+  )
 
-p1 = ggplot(importance$results) +
-  geom_col(aes(x = feature, y = importance)) +
-  labs(x = 'Feature', y = 'Permutation Importance') +
-  coord_flip() +
-  theme_minimal()
+# YM - No Group, No VS - Random Forest
+generate_model(
+  target = "youngs_modulus",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vp', 
+    "bulk_density", "group", "deviatoric_stress"
+    ),
+  model_type = "regr.ranger",
+  pset= makeParamSet(
+    makeIntegerParam('mtry', lower = 1L, upper = 6L),
+    makeIntegerParam('num.trees', lower = 10L, upper = 200L),
+    makeIntegerParam('min.node.size', lower = 0, upper = 1, trafo = function(x) 80^x),
+    makeNumericParam('sample.fraction', lower = 0.2, upper = 0.9)
+  ),
+  prefix = 'ym_rf_novs'
+  )
+```
 
-interact = Interaction$new(predictor)
+The following functions generate models for Poisson's Ratio:
+- PR - All features - GLM
+- PR - No Group - GLM
+- PR - No VS - GLM
+- PR - All features - MARS
+- PR - No Group - MARS
+- PR - No VS - MARS
+- PR - All features - Random Forest
+- PR - No Group - Random Forest
+- PR - No VS - Random Forest
 
-p2 = ggplot(as.data.frame(interact$results)) +
-  geom_col(aes(x = .feature, y = .interaction)) +
-  labs(x = '', y = 'Interaction') +
-  coord_flip() +
-  theme_minimal()
+```{r}
+# YM - All features - GLM
+generate_model(
+  target = "poisson_ratio",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
+    "bulk_density", "group", "deviatoric_stress"
+    ),
+  model_type = "regr.glmnet",
+  pset= makeParamSet(
+    makeNumericParam('alpha',lower = 0, upper = 1),
+    makeIntegerParam('lambda', lower = -4, upper = 1, trafo = function(x) 10^x)
+    ),
+  prefix = 'pr_glm_all'
+  )
 
-ggsave(file = paste0('../output/',prefix,"/imp_int_plot.pdf"), 
-       arrangeGrob(grobs = list(p1,p2), ncol=1),
-       width = 6, height = 6, dpi=600)
+# YM - No Group - GLM
+generate_model(
+  target = "poisson_ratio",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
+    "bulk_density", "deviatoric_stress"
+    ),
+  model_type = "regr.glmnet",
+  pset= makeParamSet(
+    makeNumericParam('alpha',lower = 0, upper = 1),
+    makeIntegerParam('lambda', lower = -4, upper = 1, trafo = function(x) 10^x)
+    ),
+  prefix = 'pr_glm_nogroup'
+  )
 
-# PARTIAL DEPENDENCE PLOT
-plist <- map(.x = 1:length(features), .f = make_pdp_plot,
-             predictor = predictor, feats = features)
+# YM - No VS - GLM
+generate_model(
+  target = "poisson_ratio",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vp', 
+    "bulk_density", "deviatoric_stress", "group"
+    ),
+  model_type = "regr.glmnet",
+  pset= makeParamSet(
+    makeNumericParam('alpha',lower = 0, upper = 1),
+    makeIntegerParam('lambda', lower = -4, upper = 1, trafo = function(x) 10^x)
+    ),
+  prefix = 'pr_glm_novs'
+  )
 
-ggsave(file = paste0('../output/',prefix,"/pdpplot.pdf"), 
-       arrangeGrob(grobs = plist, ncol = 3, left = target),
-       width = 12, height = 6, dpi=600)
+# YM - All features - MARS
+generate_model(
+  target = "poisson_ratio",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
+    "bulk_density", "group", "deviatoric_stress"
+    ),
+  model_type = "regr.mars",
+  pset= makeParamSet(
+    makeDiscreteParam('degree',values=c(1,2,3)),
+    makeIntegerParam('nk', lower = 1, upper = 30)
+    ),
+  prefix = 'pr_mars_all'
+  )
+
+# YM - No Group - MARS
+generate_model(
+  target = "poisson_ratio",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
+    "bulk_density", "deviatoric_stress"
+    ),
+  model_type = "regr.mars",
+  pset= makeParamSet(
+    makeDiscreteParam('degree',values=c(1,2,3)),
+    makeIntegerParam('nk', lower = 1, upper = 30)
+    ),
+  prefix = 'pr_mars_nogroup'
+  )
+
+# YM - No Group, No VS - MARS
+generate_model(
+  target = "poisson_ratio",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vp', 
+    "bulk_density", "group", "deviatoric_stress"
+    ),
+  model_type = "regr.mars",
+  pset= makeParamSet(
+    makeDiscreteParam('degree',values=c(1,2,3)),
+    makeIntegerParam('nk', lower = 1, upper = 30)
+    ),
+  prefix = 'pr_mars_novs'
+  )
+
+# YM - All features - Random Forest
+generate_model(
+  target = "poisson_ratio",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
+    "bulk_density", "group", "deviatoric_stress"
+    ),
+  model_type = "regr.ranger",
+  pset= makeParamSet(
+    makeIntegerParam('mtry', lower = 1L, upper = 6L),
+    makeIntegerParam('num.trees', lower = 10L, upper = 200L),
+    makeIntegerParam('min.node.size', lower = 0, upper = 1, trafo = function(x) 80^x),
+    makeNumericParam('sample.fraction', lower = 0.2, upper = 0.9)
+  ),
+  prefix = 'pr_rf_all'
+  )
+
+# YM - No Group - Random Forest
+generate_model(
+  target = "poisson_ratio",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
+    "bulk_density", "deviatoric_stress"
+    ),
+  model_type = "regr.ranger",
+  pset= makeParamSet(
+    makeIntegerParam('mtry', lower = 1L, upper = 6L),
+    makeIntegerParam('num.trees', lower = 10L, upper = 200L),
+    makeIntegerParam('min.node.size', lower = 0, upper = 1, trafo = function(x) 80^x),
+    makeNumericParam('sample.fraction', lower = 0.2, upper = 0.9)
+  ),
+  prefix = 'pr_rf_nogroup'
+  )
+
+# YM - No Group, No VS - Random Forest
+generate_model(
+  target = "poisson_ratio",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vp', 
+    "bulk_density", "group", "deviatoric_stress"
+    ),
+  model_type = "regr.ranger",
+  pset= makeParamSet(
+    makeIntegerParam('mtry', lower = 1L, upper = 6L),
+    makeIntegerParam('num.trees', lower = 10L, upper = 200L),
+    makeIntegerParam('min.node.size', lower = 0, upper = 1, trafo = function(x) 80^x),
+    makeNumericParam('sample.fraction', lower = 0.2, upper = 0.9)
+  ),
+  prefix = 'pr_rf_novs'
+  )
 ```
 
 
+The following functions generate models for Brittleness:
+- BR - All features - GLM
+- BR - No Group - GLM
+- BR - No VS - GLM
+- BR - All features - MARS
+- BR - No Group - MARS
+- BR - No VS - MARS
+- BR - All features - Random Forest
+- BR - No Group - Random Forest
+- BR - No VS - Random Forest
+
+```{r}
+# YM - All features - GLM
+generate_model(
+  target = "brittleness",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
+    "bulk_density", "group", "deviatoric_stress"
+    ),
+  model_type = "regr.glmnet",
+  pset= makeParamSet(
+    makeNumericParam('alpha',lower = 0, upper = 1),
+    makeIntegerParam('lambda', lower = -4, upper = 1, trafo = function(x) 10^x)
+    ),
+  prefix = 'br_glm_all'
+  )
+
+# YM - No Group - GLM
+generate_model(
+  target = "brittleness",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
+    "bulk_density", "deviatoric_stress"
+    ),
+  model_type = "regr.glmnet",
+  pset= makeParamSet(
+    makeNumericParam('alpha',lower = 0, upper = 1),
+    makeIntegerParam('lambda', lower = -4, upper = 1, trafo = function(x) 10^x)
+    ),
+  prefix = 'br_glm_nogroup'
+  )
+
+# YM - No VS - GLM
+generate_model(
+  target = "brittleness",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vp', 
+    "bulk_density", "deviatoric_stress", "group"
+    ),
+  model_type = "regr.glmnet",
+  pset= makeParamSet(
+    makeNumericParam('alpha',lower = 0, upper = 1),
+    makeIntegerParam('lambda', lower = -4, upper = 1, trafo = function(x) 10^x)
+    ),
+  prefix = 'br_glm_novs'
+  )
+
+# YM - All features - MARS
+generate_model(
+  target = "brittleness",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
+    "bulk_density", "group", "deviatoric_stress"
+    ),
+  model_type = "regr.mars",
+  pset= makeParamSet(
+    makeDiscreteParam('degree',values=c(1,2,3)),
+    makeIntegerParam('nk', lower = 1, upper = 30)
+    ),
+  prefix = 'br_mars_all'
+  )
+
+# YM - No Group - MARS
+generate_model(
+  target = "brittleness",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
+    "bulk_density", "deviatoric_stress"
+    ),
+  model_type = "regr.mars",
+  pset= makeParamSet(
+    makeDiscreteParam('degree',values=c(1,2,3)),
+    makeIntegerParam('nk', lower = 1, upper = 30)
+    ),
+  prefix = 'br_mars_nogroup'
+  )
+
+# YM - No Group, No VS - MARS
+generate_model(
+  target = "brittleness",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vp', 
+    "bulk_density", "group", "deviatoric_stress"
+    ),
+  model_type = "regr.mars",
+  pset= makeParamSet(
+    makeDiscreteParam('degree',values=c(1,2,3)),
+    makeIntegerParam('nk', lower = 1, upper = 30)
+    ),
+  prefix = 'br_mars_novs'
+  )
+
+# YM - All features - Random Forest
+generate_model(
+  target = "brittleness",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
+    "bulk_density", "group", "deviatoric_stress"
+    ),
+  model_type = "regr.ranger",
+  pset= makeParamSet(
+    makeIntegerParam('mtry', lower = 1L, upper = 6L),
+    makeIntegerParam('num.trees', lower = 10L, upper = 200L),
+    makeIntegerParam('min.node.size', lower = 0, upper = 1, trafo = function(x) 80^x),
+    makeNumericParam('sample.fraction', lower = 0.2, upper = 0.9)
+  ),
+  prefix = 'br_rf_all'
+  )
+
+# YM - No Group - Random Forest
+generate_model(
+  target = "brittleness",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vs', 'pred_vp', 
+    "bulk_density", "deviatoric_stress"
+    ),
+  model_type = "regr.ranger",
+  pset= makeParamSet(
+    makeIntegerParam('mtry', lower = 1L, upper = 6L),
+    makeIntegerParam('num.trees', lower = 10L, upper = 200L),
+    makeIntegerParam('min.node.size', lower = 0, upper = 1, trafo = function(x) 80^x),
+    makeNumericParam('sample.fraction', lower = 0.2, upper = 0.9)
+  ),
+  prefix = 'br_rf_nogroup'
+  )
+
+# YM - No Group, No VS - Random Forest
+generate_model(
+  target = "brittleness",
+  features =  c(
+    "orientation", "confining_pressure", 'pred_vp', 
+    "bulk_density", "group", "deviatoric_stress"
+    ),
+  model_type = "regr.ranger",
+  pset= makeParamSet(
+    makeIntegerParam('mtry', lower = 1L, upper = 6L),
+    makeIntegerParam('num.trees', lower = 10L, upper = 200L),
+    makeIntegerParam('min.node.size', lower = 0, upper = 1, trafo = function(x) 80^x),
+    makeNumericParam('sample.fraction', lower = 0.2, upper = 0.9)
+  ),
+  prefix = 'br_rf_novs'
+  )
+```
