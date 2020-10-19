@@ -167,11 +167,11 @@ plot_residuals <- function(train_predict, test_predict, prefix){
 #' @param importance_reps number of iterations for permutation importance
 #' @return TRUE
 #' @export
-generate_model <- function(
+generate_model <- function(data,
   target, features, model_type, pset, prefix, seed=1, train_ratio=0.9,
   mbo_budget= 75L, resample_iters=1000, importance_reps=50){
   set.seed(seed)
-  ml_df = mldf_nores %>% select(features, target)
+  ml_df = data %>% select(features, target)
 
   train_rows = sample(nrow(ml_df)*train_ratio)
   train = ml_df[train_rows,]
