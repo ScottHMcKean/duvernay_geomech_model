@@ -2,4 +2,10 @@
 
 export(fit_vp_model)
 export(fit_vs_model)
+export(generate_model)
+export(get_resample_regr_res)
+export(make_pdp_plot)
+export(plot_importance_interaction)
+export(plot_pdp)
+export(plot_residuals)
 export(rmse)
