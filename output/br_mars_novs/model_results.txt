@@ -1,0 +1,42 @@
+$train_mean_bias
+[1] 0.02114182
+
+$train_mean_variance
+[1] 0.001027268
+
+$test_mean_bias
+[1] 0.02466529
+
+$test_mean_variance
+[1] 0.001174024
+
+$resample_obj
+Resample Result
+Task: ml_df
+Learner: regr.mars
+Aggr perf: mae.test.mean=0.1170831,rmse.test.rmse=0.1570519
+Runtime: 11.907
+
+$train_perf
+      mae      rmse 
+0.1041710 0.1425951 
+
+$test_perf
+      mae      rmse 
+0.1603955 0.1951604 
+
+$model
+Model for learner.id=regr.mars; learner.class=regr.mars
+Trained on: task.id = train; obs = 273; features = 6
+Hyperparameters: degree=1,nk=9
+
+$tuned_learner
+Learner regr.mars from package mda
+Type: regr
+Name: Multivariate Adaptive Regression Splines; Short name: mars
+Class: regr.mars
+Properties: numerics
+Predict-Type: response
+Hyperparameters: degree=1,nk=9
+
+

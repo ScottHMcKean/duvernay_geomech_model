@@ -1,0 +1,42 @@
+$train_mean_bias
+[1] 0.00319079
+
+$train_mean_variance
+[1] 0.0002210812
+
+$test_mean_bias
+[1] 0.01884561
+
+$test_mean_variance
+[1] 0.001035726
+
+$resample_obj
+Resample Result
+Task: ml_df
+Learner: regr.ranger
+Aggr perf: mae.test.mean=0.0966015,rmse.test.rmse=0.1372793
+Runtime: 158.581
+
+$train_perf
+       mae       rmse 
+0.03811348 0.05536620 
+
+$test_perf
+      mae      rmse 
+0.1083428 0.1337973 
+
+$model
+Model for learner.id=regr.ranger; learner.class=regr.ranger
+Trained on: task.id = train; obs = 273; features = 6
+Hyperparameters: num.threads=1,verbose=FALSE,respect.unordered.factors=order,mtry=6,num.trees=185,min.node.size=1,sample.fraction=0.9
+
+$tuned_learner
+Learner regr.ranger from package ranger
+Type: regr
+Name: Random Forests; Short name: ranger
+Class: regr.ranger
+Properties: numerics,factors,ordered,oobpreds,featimp,se,weights
+Predict-Type: response
+Hyperparameters: num.threads=1,verbose=FALSE,respect.unordered.factors=order,mtry=6,num.trees=185,min.node.size=1,sample.fraction=0.9
+
+
