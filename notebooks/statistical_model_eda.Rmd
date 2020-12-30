@@ -15,22 +15,7 @@ Load datasets
 mldf_wres = read_csv("../data/merged_tests_w_residual.csv") %>%
   mutate(brittleness = (peak_stress_dev - residual_stress_dev)/peak_stress_dev) %>%
   mutate(orientation = as_factor(orientation)) %>%
-  mutate(group = as_factor(group))
-
-mldf_nores = read_csv("../data/merged_tests_no_residual.csv") %>%
-  mutate(orientation = as_factor(orientation)) %>%
-  mutate(group = as_factor(group))
-```
-
-```{r}
-num_cols = c("confining_pressure", "peak_stress_dev", 
-"residual_stress_dev", "youngs_modulus", "poisson_ratio", "bulk_density", 
-"brittleness", "pred_vp", "pred_vs")
-
-mldf_wres_num <- mldf_wres %>% 
-  select("confining_pressure", "peak_stress_dev", 
-    "residual_stress_dev", "youngs_modulus", "poisson_ratio", "bulk_density", 
-    "brittleness", "pred_vp", "pred_vs") %>%
+  mutate(group = as_factor(group)) %>%
   rename(
     "Confining Pressure (MPa)" = confining_pressure,
     "Peak Stress (MPa)" = peak_stress_dev, 
@@ -40,12 +25,13 @@ mldf_wres_num <- mldf_wres %>%
     "Bulk Density (g/cm3)" = bulk_density, 
     "Brittleness (MPa)" = brittleness, 
     "Compressional Sonic (m/s)" = pred_vp, 
-    "Shear Sonic (m/s)" = pred_vs)
+    "Shear Sonic (m/s)" = pred_vs,
+    "Orientation" = orientation,
+    "Group" = group)
 
-mldf_nores_num <- mldf_nores %>% 
-  select("confining_pressure", "peak_stress_dev", 
-    "youngs_modulus", "poisson_ratio", "bulk_density", 
-    "pred_vp", "pred_vs") %>%
+mldf_nores = read_csv("../data/merged_tests_no_residual.csv") %>%
+  mutate(orientation = as_factor(orientation)) %>%
+  mutate(group = as_factor(group)) %>%
   rename(
     "Confining Pressure (MPa)" = confining_pressure,
     "Peak Stress (MPa)" = peak_stress_dev, 
@@ -53,7 +39,22 @@ mldf_nores_num <- mldf_nores %>%
     "Poisson's Ratio" = poisson_ratio, 
     "Bulk Density (g/cm3)" = bulk_density,
     "Compressional Sonic (m/s)" = pred_vp, 
-    "Shear Sonic (m/s)" = pred_vs)
+    "Shear Sonic (m/s)" = pred_vs,
+    "Orientation" = orientation,
+    "Group" = group)
+```
+
+```{r}
+mldf_wres_num <- mldf_wres %>% 
+  select("Confining Pressure (MPa)", "Peak Stress (MPa)", 
+    "Residual Stress (MPa)", "Young's Modulus (GPa)", "Poisson's Ratio", 
+    "Bulk Density (g/cm3)", "Compressional Sonic (m/s)", "Shear Sonic (m/s)", 
+    "Brittleness (MPa)")
+
+mldf_nores_num <- mldf_nores %>% 
+  select("Confining Pressure (MPa)", "Peak Stress (MPa)", 
+    "Young's Modulus (GPa)", "Poisson's Ratio", "Bulk Density (g/cm3)", 
+    "Compressional Sonic (m/s)", "Shear Sonic (m/s)")
 ```
 
 Correlation Plot
@@ -97,15 +98,21 @@ Filter-based feature importance using MLR and information gain - inconclusive.
 
 ```{r}
 # With Residuals
-wres_feats = c("orientation", "group", "confining_pressure", "peak_stress_dev", 
-"residual_stress_dev", "bulk_density", "pred_vp", "pred_vs")
+wres_feats = c("Confining Pressure (MPa)", "Peak Stress (MPa)", 
+    "Residual Stress (MPa)", "Young's Modulus (GPa)", "Poisson's Ratio", 
+    "Bulk Density (g/cm3)", "Compressional Sonic (m/s)", "Shear Sonic (m/s)", 
+    "Brittleness (MPa)","Orientation","Group")
+
+mldf_wres_clean <- mldf_wres %>% 
+  select(wres_feats) %>% 
+  janitor::clean_names("upper_camel")
 
 mldf_wres_ym_norm = normalizeFeatures(
-  mldf_wres %>% select(wres_feats, youngs_modulus),
-  target ="youngs_modulus")
+  mldf_wres_clean %>% select(-PoissonsRatio, -BrittlenessMPa), 
+  target="YoungsModulusGPa")
 
 regr_wres_fv_ym = generateFilterValuesData(
-  makeRegrTask(data = mldf_wres_ym_norm, target = "youngs_modulus"), 
+  makeRegrTask(data = mldf_wres_ym_norm, target = "YoungsModulusGPa"), 
   method = c("FSelector_information.gain")
   )
 
@@ -115,11 +122,11 @@ ym_fv_wres_plot <- plotFilterValues(regr_wres_fv_ym) +
   coord_flip()
 
 mldf_wres_pr_norm = normalizeFeatures(
-  mldf_wres %>% select(wres_feats, poisson_ratio),
-  target ="poisson_ratio")
+  mldf_wres_clean %>% select(-YoungsModulusGPa, -BrittlenessMPa),
+  target="PoissonsRatio")
 
 regr_fv_wres_pr = generateFilterValuesData(
-  makeRegrTask(data = mldf_wres_pr_norm, target = "poisson_ratio"), 
+  makeRegrTask(data = mldf_wres_pr_norm, target = "PoissonsRatio"), 
   method = c("FSelector_information.gain")
   )
 
@@ -129,11 +136,11 @@ pr_fv_wres_plot <- plotFilterValues(regr_fv_wres_pr) +
   coord_flip()
 
 mldf_wres_br_norm = normalizeFeatures(
-  mldf_wres %>% select(wres_feats, brittleness),
-  target ="brittleness")
+  mldf_wres_clean %>% select(-YoungsModulusGPa, -PoissonsRatio), 
+  target="BrittlenessMPa")
 
 regr_fv_br = generateFilterValuesData(
-  makeRegrTask(data = mldf_wres_br_norm, target = "brittleness"), 
+  makeRegrTask(data = mldf_wres_br_norm, target = "BrittlenessMPa"), 
   method = c("FSelector_information.gain")
   )
 
@@ -143,15 +150,21 @@ br_fv_plot <- plotFilterValues(regr_fv_br) +
   coord_flip()
 
 # No residual
-nores_feats = c("orientation", "group", "confining_pressure", "peak_stress_dev", 
-"bulk_density", "pred_vp", "pred_vs")
+nores_feats = c("Confining Pressure (MPa)", "Peak Stress (MPa)", 
+    "Young's Modulus (GPa)", "Poisson's Ratio", 
+    "Bulk Density (g/cm3)", "Compressional Sonic (m/s)", "Shear Sonic (m/s)", 
+    "Orientation","Group")
+
+mldf_nores_clean <- mldf_nores %>% 
+  select(nores_feats) %>%
+  janitor::clean_names("upper_camel")
 
 mldf_nores_ym_norm = normalizeFeatures(
-  mldf_nores %>% select(nores_feats, youngs_modulus),
-  target ="youngs_modulus")
+  mldf_nores_clean %>% select(-PoissonsRatio),
+  target ="YoungsModulusGPa")
 
 regr_fv_nores_ym = generateFilterValuesData(
-  makeRegrTask(data = mldf_nores_ym_norm, target = "youngs_modulus"), 
+  makeRegrTask(data = mldf_nores_ym_norm, target = "YoungsModulusGPa"), 
   method = c("FSelector_information.gain")
   )
 
@@ -161,11 +174,11 @@ ym_fv_nores_plot <- plotFilterValues(regr_fv_nores_ym) +
   coord_flip()
 
 mldf_nores_pr_norm = normalizeFeatures(
-  mldf_nores %>% select(nores_feats, poisson_ratio),
-  target ="poisson_ratio")
+  mldf_nores_clean %>% select(-YoungsModulusGPa),
+  target ="PoissonsRatio")
 
 regr_fv_nores_pr = generateFilterValuesData(
-  makeRegrTask(data = mldf_nores_pr_norm, target = "poisson_ratio"), 
+  makeRegrTask(data = mldf_nores_pr_norm, target = "PoissonsRatio"), 
   method = c("FSelector_information.gain")
   )
 
@@ -175,7 +188,7 @@ pr_fv_nores_plot <- plotFilterValues(regr_fv_nores_pr) +
   coord_flip()
 
 grobs = arrangeGrob(grobs=list(ym_fv_wres_plot,pr_fv_wres_plot,br_fv_plot,ym_fv_nores_plot, pr_fv_nores_plot), widths = unit(c(4,4,4),"in"), heights = unit(c(3,3),"in"))
-ggsave("../output/mutual_information.pdf", grobs, width = 12, height = 6)
+ggsave("../output/mutual_information.eps", grobs, width = 12, height = 6)
 ggsave("../output/mutual_information.pdf", grobs, width = 12, height = 6, dpi=600)
 ```
 
