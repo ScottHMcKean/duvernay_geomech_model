@@ -40,6 +40,17 @@ study_raster <- raster(
   )
 ```
 
+Load the Duvernay isopach
+http://www.ags.gov.ab.ca/publications/DIG/ZIP/DIG_2008_0124.zip
+
+```{r}
+duvernay_iso <- st_read(dsn = '../data/dvisopach/', layer = 'fg1217_py_ll') %>%
+  st_transform(., crs = 26911) %>%
+  janitor::clean_names() %>%
+  dplyr::filter(descr1 != 'Dolomite') %>%
+  st_intersection(study_bounds)
+```
+
 Load the ground surface from Alberta Geological Survey's 3D Model
 https://ags.aer.ca/publication/3d-pgf-model-v2
 
@@ -53,7 +64,7 @@ we need depth below ground surface to calculate a proper gradient. We use the ra
 package to extract this from AGS's 3D geomodel using 
 
 ```{r}
-vert_stress_sf <- read_tsv('../data/shen2018/DIG_2018_0013_vertical_stress.txt') %>%
+sv_sf <- read_tsv('../data/shen2018/DIG_2018_0013_vertical_stress.txt') %>%
   st_as_sf(.,coords = c('Long_NAD83','Lat_NAD83'), crs = 4269) %>%
   st_transform(crs = 26911) %>%
   st_crop(study_bounds) %>%
@@ -63,13 +74,17 @@ vert_stress_sf <- read_tsv('../data/shen2018/DIG_2018_0013_vertical_stress.txt')
   dplyr::mutate(datum_mbgs = ground_elev_masl - datum_elev_masl) %>%
   mutate(sv_mpa = vertical_stress/1000) %>%
   mutate(svgrad_kpa_m = vertical_stress/datum_mbgs) %>%
-  dplyr::select(datum_elev_masl, datum_mbgs, sv_mpa, sv_grad_kpa_m)
+  dplyr::select(datum_elev_masl, datum_mbgs, sv_mpa, svgrad_kpa_m)
+
+save(sv_sf, file='../cache/sv_sf.rds')
 ```
 
 Show 2D and 3D gradients using viridis scale. The 3D plot demonstrates vertical variability across study area and shows why stress gradient is so important.
 
 ```{r}
-ggplot(vert_stress_sf) +
+ggplot(sv_sf) +
+  geom_sf(data = duvernay_iso) +
+  geom_sf(data = study_bounds, fill = NA) +
   geom_sf(aes(colour=svgrad_kpa_m)) +
   theme_minimal() +
   scale_colour_viridis(option='viridis') +
@@ -77,10 +92,11 @@ ggplot(vert_stress_sf) +
   ggsave('../figure_outputs/svgrad_2d.pdf')
 
 make_3d_plot(
-  vert_stress_sf, 
+  sv_sf, 
   z_col='datum_elev_masl', 
   col_col = 'svgrad_kpa_m',
-  col_func = viridis(50)
+  col_func = viridis(50),
+  size=0.35
   )
 ```
 
@@ -88,7 +104,7 @@ Load Shen et al. (2018)'s shmin data. We assume a kelly bushing height of 7 m,
 which should be pretty fair.
 
 ```{r}
-study_shmin_sf <- read_tsv('../data/shen2018/DIG_2018_0013_DFITSh.txt') %>%
+shmin_sf <- read_tsv('../data/shen2018/DIG_2018_0013_DFITSh.txt') %>%
   st_as_sf(.,coords = c('Long_NAD83','Lat_NAD83'), crs = 4269) %>%
   st_transform(crs= 26911) %>%
   dplyr::filter(st_contains(study_bounds, ., sparse = FALSE)) %>%
@@ -104,24 +120,89 @@ study_shmin_sf <- read_tsv('../data/shen2018/DIG_2018_0013_DFITSh.txt') %>%
   dplyr::mutate(shmin_mpa = shmin/1000) %>%
   dplyr::mutate(shmingrad_kpa_m = shmin / (datum_tvd - 7)) %>%
   dplyr::select(datum_elev_masl, datum_mbgs, shmin_mpa, shmingrad_kpa_m)
+
+save(shmin_sf, file='../cache/shmin_sf.rds')
 ```
 
-Show 2D and 3D gradients using magma scale. The 3D plot demonstrates vertical variability across study area and shows why stress gradient is so important.
+Load Shen's 2018 pore pressure data. Following their approach, we take static
+gradients when available, followed by the mean of the buildup analysis methods,
+followed by the initial reported pore pressure.
 
 ```{r}
-ggplot(study_shmin_sf) +
-  geom_sf(aes(colour=shmingrad_kpa_m)) +
+pp_sf <- read_tsv('../data/shen2018/DIG_2018_0013_pore_pressure.txt') %>%
+  st_as_sf(.,coords = c('Long_NAD83','Lat_NAD83'), crs = 4269) %>%
+  st_transform(crs= 26911) %>%
+  dplyr::filter(st_contains(study_bounds, ., sparse = FALSE)) %>%
+  janitor::clean_names() %>%
+  dplyr::mutate(pp = case_when(
+    !is.na(pore_static_gradient) ~ pore_static_gradient,
+    test_type != 'static gradient' ~ mean(
+      c(buildup_linear,buildup_radial,buildup_bi_linear),na.rm=TRUE),
+    TRUE ~ reported_pore_initial,
+  )) %>%
+  dplyr::mutate(datum_elev_masl = kb_el_masl - datum_tvd) %>%
+  dplyr::mutate(datum_mbgs = datum_tvd - 7) %>%
+  dplyr::mutate(uwi = str_remove_all(well_id,"-")) %>%
+  dplyr::mutate(uwi = str_remove_all(uwi,"/")) %>%
+  dplyr::mutate(pp_mpa = pp/1000) %>%
+  dplyr::mutate(ppgrad_kpa_m = pp/(datum_tvd-7)) %>%
+  dplyr::select(datum_elev_masl, datum_mbgs, pp_mpa, ppgrad_kpa_m)
+
+save(pp_sf, file='../cache/pp_sf.rds')
+```
+
+Show 2D and 3D gradients using magma scale. Really shows the sparsity of the 
+stress data. We overlay the pp/shmin on the other plot for reference to show 
+the observation heterotopy.
+
+```{r}
+ggplot(shmin_sf) +
+  geom_sf(data = duvernay_iso) +
+  geom_sf(data = study_bounds, fill = NA) +
+  geom_sf(data=pp_sf, colour='black', shape=21, size=3) +
+  geom_sf(aes(colour=shmingrad_kpa_m),size=1.5) +
   theme_minimal() +
   scale_colour_viridis(option='magma') +
   coord_sf(datum=st_crs(26911)) +
-  xlim(460000,560000) +
-  ylim(5980000,6080000) +
   ggsave('../figure_outputs/shmingrad_2d.pdf')
 
 make_3d_plot(
-  study_shmin_sf, 
+  shmin_sf, 
   z_col='datum_elev_masl', 
   col_col = 'shmingrad_kpa_m',
-  col_func = magma(50)
+  col_func = magma(50),
+  size=1
   )
+```
+
+Show 2D and 3D gradients using magma scale. Really shows the sparsity of the 
+pore pressure data.
+
+```{r}
+ggplot(pp_sf) +
+  geom_sf(data = duvernay_iso) +
+  geom_sf(data = study_bounds, fill = NA) +
+  geom_sf(data=shmin_sf, colour='black', shape=21, size=3) +
+  geom_sf(aes(colour=ppgrad_kpa_m), size=1.5) +
+  theme_minimal() +
+  scale_colour_viridis(option='plasma') +
+  coord_sf(datum=st_crs(26911)) +
+  ggsave('../figure_outputs/ppgrad_kpa_m.pdf')
+
+make_3d_plot(
+  pp_sf, 
+  z_col='datum_elev_masl', 
+  col_col = 'ppgrad_kpa_m',
+  col_func = plasma(50),
+  size=1
+  )
+```
+
+Now that we have the stress data, save as R objects so we can load into the
+geostatistics script.
+
+```{r}
+
+load('pp_sf.rds')
+rm(pp_sf)
 ```

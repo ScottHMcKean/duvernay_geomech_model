@@ -23,11 +23,14 @@ tests include:
 
 ## Geostatistical Analysis
 
-The /data/DIG_2018_0013 folder contains a copy of the data from 
+The /data/dvisopach folder contains a copy of the data from Switzer et al. (2008)'s
+"Duvernay Interval Isopach and Lithofacies", found here:http://www.ags.gov.ab.ca/publications/DIG/ZIP/DIG_2008_0124.zip.
+
+The /data/shen2018 folder contains a copy of the data from 
 Shen et al. (2018)'s "In-Situ Stress Measurements for the Duvernay Formation, Alberta", found here: http://ags.aer.ca/document/DIG/DIG_2018_0013.zip. Vertical stress, 
 minimum horizontal stress, and pore-pressure measurements are used in the study.
 
-The /data/AGS_3D_Model folder contains layers from the Alberta Geological Survey's
+The /data/ags3dmodel folder contains layers from the Alberta Geological Survey's
 3D Geological Model: https://ags.aer.ca/publication/3d-pgf-model-v2 that are loaded
 by the study.
 
