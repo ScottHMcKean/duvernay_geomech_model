@@ -1,0 +1,127 @@
+---
+title: "Geostatistics Data Preparation"
+author: "Scott McKean"
+date: "05/02/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+library(sf)
+library(tidyverse)
+library(janitor)
+library(plot3D)
+library(viridis)
+```
+
+Setup our study bounds and make a 2.5 km x 2.5 km raster grid
+
+```{r}
+# set study bounds
+study_bound_coords <- rbind(
+  c(460000, 5980000), c(460000, 6080000), c(560000, 6080000), 
+  c(560000, 5980000), c(460000, 5980000)
+  )
+
+# make a polygon
+study_bounds <- list(study_bound_coords) %>%
+  st_polygon() %>%
+  st_sfc(., crs = 26911) %>%
+  st_sf(.)
+
+study_proj = st_crs(study_bounds)$proj4string
+
+# make a 2500x2500 m raster
+study_raster <- raster(
+  extent(study_bounds), 
+  resolution = 2500,
+  crs = st_crs(study_bounds)$proj4string
+  )
+```
+
+Load the ground surface from Alberta Geological Survey's 3D Model
+https://ags.aer.ca/publication/3d-pgf-model-v2
+
+```{r}
+ground_surface <- raster('../data/ags3dmodel/cmh_01_QNgPg_sediment_top.asc') %>%
+  raster::projectRaster(., crs = study_proj)
+```
+
+Load Shen et al. (2018)'s  vertical stress data. Because the datum is provided in masl,
+we need depth below ground surface to calculate a proper gradient. We use the raster
+package to extract this from AGS's 3D geomodel using 
+
+```{r}
+vert_stress_sf <- read_tsv('../data/shen2018/DIG_2018_0013_vertical_stress.txt') %>%
+  st_as_sf(.,coords = c('Long_NAD83','Lat_NAD83'), crs = 4269) %>%
+  st_transform(crs = 26911) %>%
+  st_crop(study_bounds) %>%
+  janitor::clean_names() %>%
+  rename(datum_elev_masl = datum_el) %>%
+  dplyr::mutate(ground_elev_masl = raster::extract(ground_surface, .,)) %>%
+  dplyr::mutate(datum_mbgs = ground_elev_masl - datum_elev_masl) %>%
+  mutate(sv_mpa = vertical_stress/1000) %>%
+  mutate(svgrad_kpa_m = vertical_stress/datum_mbgs) %>%
+  dplyr::select(datum_elev_masl, datum_mbgs, sv_mpa, sv_grad_kpa_m)
+```
+
+Show 2D and 3D gradients using viridis scale. The 3D plot demonstrates vertical variability across study area and shows why stress gradient is so important.
+
+```{r}
+ggplot(vert_stress_sf) +
+  geom_sf(aes(colour=svgrad_kpa_m)) +
+  theme_minimal() +
+  scale_colour_viridis(option='viridis') +
+  coord_sf(datum=st_crs(26911)) +
+  ggsave('../figure_outputs/svgrad_2d.pdf')
+
+make_3d_plot(
+  vert_stress_sf, 
+  z_col='datum_elev_masl', 
+  col_col = 'svgrad_kpa_m',
+  col_func = viridis(50)
+  )
+```
+
+Load Shen et al. (2018)'s shmin data. We assume a kelly bushing height of 7 m, 
+which should be pretty fair.
+
+```{r}
+study_shmin_sf <- read_tsv('../data/shen2018/DIG_2018_0013_DFITSh.txt') %>%
+  st_as_sf(.,coords = c('Long_NAD83','Lat_NAD83'), crs = 4269) %>%
+  st_transform(crs= 26911) %>%
+  dplyr::filter(st_contains(study_bounds, ., sparse = FALSE)) %>%
+  janitor::clean_names() %>%
+  dplyr::mutate(shmin = ifelse(
+    is.na(sh_reported), 
+    (p_vs_log_t_high + p_vs_log_t_low)/2,
+    sh_reported)) %>%
+  dplyr::mutate(datum_elev_masl = kb_el_masl - datum_tvd) %>%
+  dplyr::mutate(datum_mbgs = datum_tvd - 7) %>%
+  dplyr::mutate(uwi = str_remove_all(well_id,"-")) %>%
+  dplyr::mutate(uwi = str_remove_all(uwi,"/")) %>%
+  dplyr::mutate(shmin_mpa = shmin/1000) %>%
+  dplyr::mutate(shmingrad_kpa_m = shmin / (datum_tvd - 7)) %>%
+  dplyr::select(datum_elev_masl, datum_mbgs, shmin_mpa, shmingrad_kpa_m)
+```
+
+Show 2D and 3D gradients using magma scale. The 3D plot demonstrates vertical variability across study area and shows why stress gradient is so important.
+
+```{r}
+ggplot(study_shmin_sf) +
+  geom_sf(aes(colour=shmingrad_kpa_m)) +
+  theme_minimal() +
+  scale_colour_viridis(option='magma') +
+  coord_sf(datum=st_crs(26911)) +
+  xlim(460000,560000) +
+  ylim(5980000,6080000) +
+  ggsave('../figure_outputs/shmingrad_2d.pdf')
+
+make_3d_plot(
+  study_shmin_sf, 
+  z_col='datum_elev_masl', 
+  col_col = 'shmingrad_kpa_m',
+  col_func = magma(50)
+  )
+```

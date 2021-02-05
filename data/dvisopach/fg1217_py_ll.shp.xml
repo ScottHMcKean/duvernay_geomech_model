@@ -1,0 +1,287 @@
+<?xml version="1.0"?>
+<metadata>
+<idinfo>
+  <citation>
+    <citeinfo>
+      <origin>Switzer, S.B.</origin>
+      <origin>Holland, W.G.</origin>
+      <origin>Christie, D.S.</origin>
+      <origin>Graf, G.C.</origin>
+      <origin>Hedinger, A.S.</origin>
+      <origin>McAuley, R.J.</origin>
+      <origin>Wierzbicki, R.A.</origin>
+      <origin>Packard, J.J.</origin>
+      <pubdate>2008</pubdate>
+      <title>Duvernay Interval Isopach and Lithofacies (GIS data, polygon features)</title>
+      <edition>v. 2</edition>
+      <geoform>vector digital data</geoform>
+      <serinfo>
+        <sername>Digital Data</sername>
+        <issue>DIG 2008-0124</issue>
+      </serinfo>
+      <pubinfo>
+        <pubplace>Edmonton, Alberta, Canada</pubplace>
+        <publish>Alberta Geological Survey</publish>
+      </pubinfo>
+      <onlink>http://www.ags.gov.ab.ca/publications/DIG/ZIP/DIG_2008_0124.zip</onlink>
+    </citeinfo>
+  </citation>
+  <descript>
+    <abstract>The Geological Atlas of the Western Canada Sedimentary Basin was designed primarily as a reference volume documenting the subsurface geology of the Western Canada Sedimentary Basin. This GIS dataset is one of a collection of shapefiles representing part of Chapter 12 of the Atlas, Devonian Woodbend-Winterburn Strata of the Western Canada Sedimentary Basin, Figure 17, Duvernay Interval Isopach and Lithofacies.  Shapefiles were produced from archived digital files created by the Alberta Geological Survey in the mid-1990s, and edited in 2005-06 to correct, attribute and consolidate the data into single files by feature type and by figure.</abstract>
+    <purpose>For incorporating Atlas data into a Geographic Information System at a regional scale.</purpose>
+    <supplinf>In English.</supplinf>
+  </descript>
+  <timeperd>
+    <timeinfo>
+      <sngdate>
+        <caldate>1994</caldate>
+      </sngdate>
+    </timeinfo>
+    <current>source publication date</current>
+  </timeperd>
+  <status>
+    <progress>Complete</progress>
+    <update>None planned</update>
+  </status>
+  <spdom>
+    <bounding>
+      <westbc>-123.704482</westbc>
+      <eastbc>-99.925269</eastbc>
+      <northbc>60.676142</northbc>
+      <southbc>48.994238</southbc>
+    </bounding>
+  </spdom>
+  <keywords>
+    <theme>
+      <themekt>None</themekt>
+      <themekey>geology</themekey>
+      <themekey>gis data</themekey>
+      <themekey>western canada sedimentary basin</themekey>
+    </theme>
+    <theme>
+      <themekt>ISO 19115 Topic Category</themekt>
+      <themekey>geoscientificInformation</themekey>
+    </theme>
+    <place>
+      <placekt>None</placekt>
+      <placekey>72e</placekey>
+      <placekey>72l</placekey>
+      <placekey>72m</placekey>
+      <placekey>73d</placekey>
+      <placekey>73e</placekey>
+      <placekey>73l</placekey>
+      <placekey>73m</placekey>
+      <placekey>74d</placekey>
+      <placekey>74e</placekey>
+      <placekey>74l</placekey>
+      <placekey>74m</placekey>
+      <placekey>82g</placekey>
+      <placekey>82h</placekey>
+      <placekey>82i</placekey>
+      <placekey>82j</placekey>
+      <placekey>82n</placekey>
+      <placekey>82o</placekey>
+      <placekey>82p</placekey>
+      <placekey>83a</placekey>
+      <placekey>83b</placekey>
+      <placekey>83c</placekey>
+      <placekey>83d</placekey>
+      <placekey>83e</placekey>
+      <placekey>83f</placekey>
+      <placekey>83g</placekey>
+      <placekey>83h</placekey>
+      <placekey>83i</placekey>
+      <placekey>83j</placekey>
+      <placekey>83k</placekey>
+      <placekey>83l</placekey>
+      <placekey>83m</placekey>
+      <placekey>83n</placekey>
+      <placekey>83o</placekey>
+      <placekey>83p</placekey>
+      <placekey>84a</placekey>
+      <placekey>84b</placekey>
+      <placekey>84c</placekey>
+      <placekey>84d</placekey>
+      <placekey>84e</placekey>
+      <placekey>84f</placekey>
+      <placekey>84g</placekey>
+      <placekey>84h</placekey>
+      <placekey>84i</placekey>
+      <placekey>84j</placekey>
+      <placekey>84k</placekey>
+      <placekey>84l</placekey>
+      <placekey>84m</placekey>
+      <placekey>84n</placekey>
+      <placekey>84o</placekey>
+      <placekey>84p</placekey>
+      <placekey>alberta</placekey>
+      <placekey>canada</placekey>
+      <placekey>western canada</placekey>
+    </place>
+  </keywords>
+  <accconst>Public</accconst>
+  <useconst>Acknowledgement of the Alberta Energy Regulator/Alberta Geological Survey as the originator/source of this information is required as described in the Open Government License - Alberta.</useconst>
+  <ptcontac>
+    <cntinfo>
+      <cntorgp>
+        <cntorg>Alberta Geological Survey</cntorg>
+        <cntper>Publications and Marketing Advisor</cntper>
+      </cntorgp>
+      <cntpos>Publications and Marketing Advisor</cntpos>
+      <cntaddr>
+        <addrtype>mailing and physical</addrtype>
+        <address>Alberta Energy Regulator</address>
+        <address>4th Floor, Twin Atria Building</address>
+        <address>4999-98 Avenue NW</address>
+        <city>Edmonton</city>
+        <state>Alberta</state>
+        <postal>T6B 2X3</postal>
+        <country>Canada</country>
+      </cntaddr>
+      <cntvoice>(780) 422-1927</cntvoice>
+      <cntfax>(780) 422-1918</cntfax>
+      <cntemail>AGS-Info@aer.ca</cntemail>
+      <hours>8:00 a.m. to 12:00 p.m. and 1:00 p.m. to 4:30 p.m.</hours>
+    </cntinfo>
+  </ptcontac>
+  <datacred>A. Lytviak, E.J. Waters, N. Blundon, K. Miller, N. Crann</datacred>
+  <native>Microsoft Windows XP Version 5.1 (Build 2600) Service Pack 2; ESRI ArcCatalog 9.0.0.535</native>
+</idinfo>
+<dataqual>
+  <logic>This shapefile may contain overlaps and gaps between what are intended to be logically contiguous polygons. Where gaps were larger than approximately 100 m, polygons were edited to snap shared boundaries together. However, not all gaps and overlaps were corrected. Logical inconsistencies are also known to exist among datasets from different chapters of the Atlas itself. For example, stratigraphic surfaces may intersect or overlap incorrectly; stratigraphically lower horizons crop out above certain units, and vice versa. This is a function of different authors of the Atlas modelling their data in isolation from others, and no attempt was made by the Alberta Geological Survey (AGS) to correct these types of deficiencies.</logic>
+  <complete>The Geological Atlas is a study of the Western Canada Sedimentary Basin based upon a well density of one well per Township (36 square miles or 93 square km). Users are encouraged to consult relevant parts of the Atlas to obtain specific methodology information for datasets of interest.</complete>
+  <posacc>
+    <horizpa>
+      <horizpar>This dataset is part of a regional study covering nearly one and a half million square kilometres. Accordingly, the data should only be used to provide geological context information at a regional scale. Figures from different chapters of the Atlas were prepared by different authors, and no effort has been made by AGS to distinguish which shapefiles may be of greater or less relative positional accuracy. We estimate that the relative positional accuracy averages +/- 10 km for the files. This estimate does not take into account the accuracy of the original works, which have not been quantified.</horizpar>
+    </horizpa>
+  </posacc>
+  <lineage>
+    <procstep>
+      <procdesc>Data were archived in digital form by AGS, in geographic coordinate-based ascii files.  The files were reformated into ArcGenerate ascii files, using the ID field for the elevation attribute, then converted to shapefiles using FME 2002.  An elevation field was created and the ID field was copied over then dropped.  Shapefiles were shifted from NAD27 to NAD83 using FME 2002, which references the NTv2 grid file.  All processing was done in batch mode.</procdesc>
+      <procdate>2003</procdate>
+    </procstep>
+    <procstep>
+      <procdesc>This file was generated as part of a batch of 349 shapefiles that were deemed to be of interest for conversion to GIS format. 188 figures/maps are represented by these shapefiles.  Source data for the batch conversion project were in one of three types: 1) georeferenced digital ASCII files previously converted into shapefile format; 2) non-georeferenced, graphics format (.wmf); and 3) paper maps. Type 1 shapefile data were checked for completeness of line and polygon features, edited, then attributed with the figure title and individual feature descriptions given in the map legends. Type 2 data followed the same workflow as Type 1, except that the figures were first converted to DXF format then transformed using ArcInfo into real-world coordinates. The relatively few maps of Type 3 were scanned into image format, digitized in heads-up mode, then handled the same as Type 2 data. A quality-checking system was used to track the status of each figure and file as the work proceeded. Check plots of each map at the respective source map scale and projection and were compared to originals by the supervising geologist (M. Grobe). Errors were flagged and subsequently corrected. Once the data had been thoroughly checked, the shapefiles were projected into geographic coordinates, NAD 83 datum. 
+ArcMap layer files were created to render the shapefile data as they appear in the Geological Atlas. This step served to further the quality control for the data. Minor edits were required to about 10 shapefiles in order to symbolize them as they appear in the Atlas.</procdesc>
+      <procdate>2006</procdate>
+    </procstep>
+  </lineage>
+</dataqual>
+<spdoinfo>
+  <direct>Vector</direct>
+  <ptvctinf>
+    <sdtsterm>
+      <sdtstype>G-Polygon</sdtstype>
+      <ptvctcnt>46</ptvctcnt>
+    </sdtsterm>
+  </ptvctinf>
+</spdoinfo>
+<spref>
+  <horizsys>
+    <geograph>
+      <latres>0.08</latres>
+      <longres>0.08</longres>
+      <geogunit>decimal degrees</geogunit>
+    </geograph>
+    <geodetic>
+      <horizdn>North_American_Datum_1983</horizdn>
+      <ellips>Geodetic Reference System of 1980</ellips>
+      <semiaxis>6378137.000000</semiaxis>
+      <denflat>298.257222</denflat>
+    </geodetic>
+  </horizsys>
+</spref>
+<eainfo>
+  <detailed>
+    <enttyp>
+      <enttypl>fg1217_py_ll</enttypl>
+      <enttypd>Shapefile attributes</enttypd>
+      <enttypds>Alberta Geological Survey</enttypds>
+    </enttyp>
+    <attr>
+      <attrlabl>ID</attrlabl>
+      <attrdef>AGS unique ID</attrdef>
+      <attrdefs>Alberta Geological Survey</attrdefs>
+      <attrdomv>
+        <udom>Free text</udom>
+      </attrdomv>
+    </attr>
+    <attr>
+      <attrlabl>MAP_NAME</attrlabl>
+      <attrdef>Map or figure title</attrdef>
+      <attrdefs>Alberta Geological Survey</attrdefs>
+      <attrdomv>
+        <udom>Free text</udom>
+      </attrdomv>
+    </attr>
+    <attr>
+      <attrlabl>DESCR1</attrlabl>
+      <attrdef>Feature description</attrdef>
+      <attrdefs>Alberta Geological Survey</attrdefs>
+      <attrdomv>
+        <udom>Free text</udom>
+      </attrdomv>
+    </attr>
+  </detailed>
+  <overview>
+    <eaover>Attributes encapsulate the title and legend details of the figure.</eaover>
+  </overview>
+</eainfo>
+<distinfo>
+  <distrib>
+    <cntinfo>
+      <cntorgp>
+        <cntorg>Alberta Geological Survey</cntorg>
+        <cntper>Publications and Marketing Advisor</cntper>
+      </cntorgp>
+      <cntpos>Publications and Marketing Advisor</cntpos>
+      <cntaddr>
+        <addrtype>mailing and physical</addrtype>
+        <address>Alberta Energy Regulator</address>
+        <address>4th Floor, Twin Atria Building</address>
+        <address>4999-98 Avenue NW</address>
+        <city>Edmonton</city>
+        <state>Alberta</state>
+        <postal>T6B 2X3</postal>
+        <country>Canada</country>
+      </cntaddr>
+      <cntvoice>(780) 422-1927</cntvoice>
+      <cntfax>(780) 422-1918</cntfax>
+      <cntemail>AGS-Info@aer.ca</cntemail>
+      <hours>8:00 a.m. to 12:00 p.m. and 1:00 p.m. to 4:30 p.m.</hours>
+    </cntinfo>
+  </distrib>
+  <distliab>The Alberta Energy Regulator/Alberta Geological Survey (AER/AGS) licenses this information under the Open Government License - Alberta. Any references to proprietary software in our documentation, and/or any use of proprietary data formats in our releases, do not constitute endorsement by the AER/AGS of any manufacturer&apos;s product.</distliab>
+</distinfo>
+<metainfo>
+  <metd>20131107</metd>
+  <metc>
+    <cntinfo>
+      <cntorgp>
+        <cntorg>Alberta Geological Survey</cntorg>
+        <cntper>Publications and Marketing Advisor</cntper>
+      </cntorgp>
+      <cntpos>Publications and Marketing Advisor</cntpos>
+      <cntaddr>
+        <addrtype>mailing and physical</addrtype>
+        <address>Alberta Energy Regulator</address>
+        <address>4th Floor, Twin Atria Building</address>
+        <address>4999-98 Avenue NW</address>
+        <city>Edmonton</city>
+        <state>Alberta</state>
+        <postal>T6B 2X3</postal>
+        <country>Canada</country>
+      </cntaddr>
+      <cntvoice>(780) 422-1927</cntvoice>
+      <cntfax>(780) 422-1918</cntfax>
+      <cntemail>AGS-Info@aer.ca</cntemail>
+      <hours>8:00 a.m. to 12:00 p.m. and 1:00 p.m. to 4:30 p.m.</hours>
+    </cntinfo>
+  </metc>
+  <metstdn>FGDC Content Standard for Digital Geospatial Metadata</metstdn>
+  <metstdv>FGDC-STD-001-1998</metstdv>
+  <mettc>local time</mettc>
+  <metac>none</metac>
+  <metuc>none</metuc>
+</metainfo>
+</metadata>
