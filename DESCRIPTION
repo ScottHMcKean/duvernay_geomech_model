@@ -21,8 +21,10 @@ Depends:
     iml,
     ggcorrplot,
     gridExtra,
+    gstat,
     mlr,
     modelr,
-    tidyverse
+    tidyverse,
+    sf
 Suggests:
     usethis
