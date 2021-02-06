@@ -5,12 +5,19 @@ date: "05/02/2021"
 output: html_document
 ---
 
+# Stress Cosimulation
+
 This document goes over development of a LMC and cosimulation of stress data
 
 ```{r setup, include=FALSE}
+# geospatial packages
 library(sf)
 library(gstat)
 library(sp)
+
+# statistical normalization and analysis
+library(moments)
+library(bestNormalize)
 ```
 
 ## Load spatial dataframes
@@ -23,6 +30,36 @@ sv_sf = st_read('../cache/sv_sf.GeoJSON')
 pp_sf = st_read('../cache/pp_sf.GeoJSON')
 shmin_sf = st_read('../cache/shmin_sf.GeoJSON')
 ```
+# Variography
+
+This section investigates the normality, anisotropy, and variography of each of 
+the stress variables. 
+
+Since Sequential Gaussian Cosimulation is used, we transform variables to normal 
+distributions using the ordered quantile technique 
+
+## Descriptive Variography - SV
+
+```{r}
+sv_sp = as_Spatial(sv_sf)
+
+```
+
+## Descriptive Variography - SV
+
+```{r}
+pp_sp = as_Spatial(pp_sf)
+
+```
+
+## Descriptive Variography - SV
+
+```{r}
+shmin_sp = as_Spatial(shmin_sf)
+
+```
+
+
 ## Cosimulation 
 
 We are going to cosimulate stress values using a Linear Model of Coregionalization (LMC)
@@ -32,28 +69,103 @@ and need to quantify the uncertainty in our stress measurements, and how that
 compares to our model uncertainty.
 
 ```{r}
-sv_sp = as_Spatial(sv_sf)
-pp_sp = as_Spatial(pp_sf)
-shmin_sp = as_Spatial(shmin_sf)
+
+
+
 
 # we can load all data into a gstat despite different support 
 # this is good
 g = gstat(id='sv', formula=svgrad_kpa_m~1, data=sv_sp)
 g = gstat(g, id='pp', formula=ppgrad_kpa_m~1, data=pp_sp)
 g = gstat(g, id='shmin', formula=shmingrad_kpa_m~1, data=shmin_sp)
+```
+
+Describe the distribution of our secondary variable (Sv). The distribution
+is fairly symettrical but shows kurtosis.
+George & Mallery, 2010). 
+
+- Check skewness and kurtosis
+
+We should perform an NScore Transform
+
+```{r}
+# investigate normality
+
+
+# make an experimental variogram
+sv_v = variogram(svgrad_kpa_m~1, sv_sp)
+plot(sv_v)
+
+# check directional variograms
+sv_v_dir = variogram(svgrad_kpa_m~1, sv_sp, alpha=c(0,22,45,67,90,112,135,157))
+plot(sv_v_dir)
+
+# check for geometric anisotropy
+ggvariogram_map(
+  formula = svgrad_kpa_m~1, 
+  sp_df = sv_sp,
+  cutoff = 100E3, 
+  width = 5E3,
+  threshold = 500
+  )
+
+# make anisotropic variograms
+
+moments::skewness(sv_sf$svgrad_kpa_m)
+moments::kurtosis(sv_sf$svgrad_kpa_m)
+
+sv_norm = orderNorm(sv_sf$svgrad_kpa_m)
+sv_sf$svgrad_norm = sv_norm$x.t
+
+moments::skewness(sv_norm$x.t)
+moments::kurtosis(sv_norm$x.t)
+
+# variogram map for geometrical anisotropy
+
+
+ggdensity(sv_sf, x='svgrad_norm') +
+  stat_overlay_normal_density(color='red', linetype='dashed')
+```
+
+```{r}
+ggplot(sv_sf) +
+  geom_density(aes(svgrad_kpa_m)) +
+  stat
 
 
 
+ggdensity(df, x = "CONT", fill = "lightgray", title = "CONT") +
+  scale_x_continuous(limits = c(3, 12)) +
+  stat_overlay_normal_density(color = "red", linetype = "dashed")
+
+
+plot(sv_v)
+zon_rg = 50E3
+zon_90 = vgm(0.58, "Sph", 1E12, anis=c(0, 50E3/1E12))
+zon_0 = vgm(0.45, "Sph", 1E12, anis=c(90,30E3/1E12))
+vm = vgm(0.45, "Exp", 30E3, add.to = zonal)
+
+
+plot(sv_vmap, threshold =500)
+
+  
+
+
+
+
+
+plot(sv_v,zon_0)
+```
+
+```{r}
 # fit sv model with geometric anisotropy - same variograms, but with a different
 # range
-sv_vgm = variogram(id='sv', svgrad_kpa_m~1, sv_sp, alpha=c(0,90))
+
 vgm_mod = vgm(anis=c(0,0.5), range = 800000, anis1=0.2, anis2=0.4)
 
 vgm_mod = vgm(psill=0.4, "Sph", 20000, nugget=0, alpha = 90)
 x = vgm(psill=0.6, "Lin", 45000, nugget=0, alpha = 0, add.to=x)
 
-
-fit.lmc(variogram(g))
 
 
 
@@ -81,6 +193,17 @@ g <- gstat(g, id = "ln.lead", model = vgm(.55, "Sph", 900, .05))
 # enter cross variogram:
 g <- gstat(g, id = c("ln.zinc", "ln.lead"), model = vgm(.47, "Sph", 900, .03))
 plot(variogram(g), model = g$model, main = "models fitted by eye")
+```
+
+```{r}
+demo(meuse,ask=FALSE,echo=FALSE)
+v = variogram(log(zinc)~1, meuse, alpha = c(0,45,90,135))
+vm = vgm(.25, "Sph", 1000, anis = c(45, 0.5))
+plot(v, vm, main = "geometric")
+zonal = vgm(.5, "Sph", 1e9, anis = c(45, 1/1e6))
+vm = vgm(.25, "Sph", 1000, add.to = zonal)
+plot(v, vm, main = "zonal")
+
 ```
 
 ```{r}
