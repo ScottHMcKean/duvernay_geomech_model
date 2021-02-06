@@ -16,8 +16,13 @@ library(gstat)
 library(sp)
 
 # statistical normalization and analysis
+library(ggpubr)
 library(moments)
 library(bestNormalize)
+
+# data munging & plotting
+library(tidyverse)
+library(viridis)
 ```
 
 ## Load spatial dataframes
@@ -42,21 +47,172 @@ distributions using the ordered quantile technique
 
 ```{r}
 sv_sp = as_Spatial(sv_sf)
+# investigate normality
 
+# make anisotropic variograms
+ggdensity(sv_sf, x='svgrad_kpa_m') +
+  stat_overlay_normal_density(color='red', linetype='dashed')
+moments::skewness(sv_sf$svgrad_kpa_m)
+moments::kurtosis(sv_sf$svgrad_kpa_m)
+
+sv_norm = bestNormalize::orderNorm(sv_sf$svgrad_kpa_m)
+sv_sf$svgrad_norm = sv_sp$svgrad_norm = sv_norm$x.t
+ggdensity(sv_sf, x='svgrad_norm') +
+  stat_overlay_normal_density(color='red', linetype='dashed')
+moments::skewness(sv_norm$x.t)
+moments::kurtosis(sv_norm$x.t)
+
+# what is the global variance (should be 1...)
+var(sv_sp$svgrad_norm)
+
+# make an experimental variogram
+sv_v = variogram(svgrad_norm~1, sv_sp)
+plot(sv_v)
+
+# check directional variograms
+sv_v_dir = variogram(svgrad_norm~1, sv_sp, alpha=c(0,22,45,67,90,112,135,157))
+plot(sv_v_dir)
+
+# check for geometric anisotropy
+ggvariogram_map(
+  formula = svgrad_norm~1, 
+  sp_df = sv_sp,
+  cutoff = 100E3, 
+  width = 5E3,
+  threshold = 500
+  )
 ```
 
+## Variogram Modelling - SV
+
+Vertical stress shows geometric anisotropy with a major axis
+direction of 157 degrees, and a trend in the shorter direction. Because we are 
+trying to fit an LMC, we try to keep variogram structures simple. A anisotropy 
+of 75% reflects the variogram map nicely. Good enough to start.
+
+```{r}
+sv_v = variogram(svgrad_norm~x+y, sv_sp, alpha=c(67,157)) 
+plot(sv_v)
+
+sv_vgm = vgm(0.3, "Lin", 15E3, anis=c(67, 0.75))
+sv_vgm = vgm(0.7, "Sph", 50E3, add.to=sv_vgm)
+plot(sv_v, sv_vgm)
+
+```
 ## Descriptive Variography - SV
+
+Looking at pore pressure, there is an outlier in the data because two points are
+way above the duvernay. A couple observations:
+- The low pressures towards the east are creating a binomial distribution but I 
+don't think they should be throw out.
+- The data is quite skewed (-0.82) with heavy tails (k=3.6)
+- The variograms are awful. I honestly think a pure nugget effect might be the
+best way to look at them!?
+- You can see the data sparsity in the variogram map - patchy with no discernable
+anisotropy.
 
 ```{r}
 pp_sp = as_Spatial(pp_sf)
+# investigate normality
 
+# make anisotropic variograms
+ggdensity(pp_sf, x='ppgrad_kpa_m') +
+  stat_overlay_normal_density(color='red', linetype='dashed')
+moments::skewness(pp_sf$ppgrad_kpa_m)
+moments::kurtosis(pp_sf$ppgrad_kpa_m)
+
+# normal transform
+pp_norm = bestNormalize::orderNorm(pp_sf$ppgrad_kpa_m)
+pp_sf$ppgrad_norm = pp_sp$ppgrad_norm = pp_norm$x.t
+ggdensity(pp_sf, x='ppgrad_norm') +
+  stat_overlay_normal_density(color='red', linetype='dashed')
+moments::skewness(pp_norm$x.t)
+moments::kurtosis(pp_norm$x.t)
+
+# what is the global variance (should be 1...)
+var(pp_sp$ppgrad_norm)
+
+# make an experimental variogram
+pp_v = variogram(ppgrad_norm~1, pp_sp)
+plot(pp_v)
+
+# check directional variograms
+pp_v_dir = variogram(ppgrad_norm~1, pp_sp, alpha=c(0,22,45,67,90,112,135,157))
+plot(pp_v_dir)
+
+# check for geometric anisotropy
+ggvariogram_map(
+  formula = ppgrad_norm~1, 
+  sp_df = pp_sp,
+  cutoff = 100E3, 
+  width = 5E3,
+  threshold = 1
+  )
 ```
 
-## Descriptive Variography - SV
+## Variogram Modelling - SV
+
+A uninformative variogram here might be best solution. We use a spherical variogram with a short range (10 km) to fit our first observation. We need a model, so this is a pretty broad assumption. The other alternative is full nugget, but that simply imparts random noise and isn't all that useful for cosimulation.
 
 ```{r}
-shmin_sp = as_Spatial(shmin_sf)
+pp_v = variogram(ppgrad_norm~1, pp_sp)
+pp_v$dist[1] = 100
+pp_vgm = vgm(1, "Sph", 10000)
+plot(pp_v, pp_vgm)
+```
+## Descriptive Variography - Minimum Horizontal Stress
 
+- Actually, shmin isn't horribly non-normal (surprisingly), with nearly no skewness (-0.10) and light tails (k=2.07). But once again (as with pp), the variogram looks 
+like garbage and the data is very sparse.
+
+```{r}
+sh_sp = as_Spatial(shmin_sf)
+# investigate normality
+
+# make anisotropic variograms
+ggdensity(shmin_sf, x='shmingrad_kpa_m') +
+  stat_overlay_normal_density(color='red', linetype='dashed')
+moments::skewness(shmin_sf$shmingrad_kpa_m)
+moments::kurtosis(shmin_sf$shmingrad_kpa_m)
+
+# normal transform
+sh_norm = bestNormalize::orderNorm(shmin_sf$shmingrad_kpa_m)
+shmin_sf$shgrad_norm = sh_sp$shgrad_norm = sh_norm$x.t
+ggdensity(shmin_sf, x='shgrad_norm') +
+  stat_overlay_normal_density(color='red', linetype='dashed')
+moments::skewness(sh_norm$x.t)
+moments::kurtosis(sh_norm$x.t)
+
+# what is the global variance (should be 1...)
+var(sh_sp$shgrad_norm)
+
+# make an experimental variogram
+sh_v = variogram(shgrad_norm~1, sh_sp)
+plot(sh_v)
+
+# check directional variograms
+sh_v_dir = variogram(shgrad_norm~1, sh_sp, alpha=c(0,22,45,67,90,112,135,157))
+plot(sh_v_dir)
+
+# check for geometric anisotropy
+ggvariogram_map(
+  formula = shgrad_norm~1, 
+  sp_df = sh_sp,
+  cutoff = 100E3, 
+  width = 5E3,
+  threshold = 1
+  )
+```
+
+## Variogram Modelling - SV
+
+We apply the same variogram as pore pressure
+
+```{r}
+sh_v = variogram(shgrad_norm~1, sh_sp)
+sh_vgm = vgm(1, "Sph", 10000)
+plot(sh_v, sh_vgm)
+```
 ```
 
 
@@ -69,15 +225,11 @@ and need to quantify the uncertainty in our stress measurements, and how that
 compares to our model uncertainty.
 
 ```{r}
-
-
-
-
 # we can load all data into a gstat despite different support 
 # this is good
-g = gstat(id='sv', formula=svgrad_kpa_m~1, data=sv_sp)
-g = gstat(g, id='pp', formula=ppgrad_kpa_m~1, data=pp_sp)
-g = gstat(g, id='shmin', formula=shmingrad_kpa_m~1, data=shmin_sp)
+g = gstat(id='sv', formula=svgrad_norm~1, data=sv_sp)
+g = gstat(g, id='pp', formula=ppgrad_norm~1, data=pp_sp)
+g = gstat(g, id='shmin', formula=shgrad_kpa_m~1, data=sh_sp)
 ```
 
 Describe the distribution of our secondary variable (Sv). The distribution
@@ -92,39 +244,8 @@ We should perform an NScore Transform
 # investigate normality
 
 
-# make an experimental variogram
-sv_v = variogram(svgrad_kpa_m~1, sv_sp)
-plot(sv_v)
-
-# check directional variograms
-sv_v_dir = variogram(svgrad_kpa_m~1, sv_sp, alpha=c(0,22,45,67,90,112,135,157))
-plot(sv_v_dir)
-
-# check for geometric anisotropy
-ggvariogram_map(
-  formula = svgrad_kpa_m~1, 
-  sp_df = sv_sp,
-  cutoff = 100E3, 
-  width = 5E3,
-  threshold = 500
-  )
-
-# make anisotropic variograms
-
-moments::skewness(sv_sf$svgrad_kpa_m)
-moments::kurtosis(sv_sf$svgrad_kpa_m)
-
-sv_norm = orderNorm(sv_sf$svgrad_kpa_m)
-sv_sf$svgrad_norm = sv_norm$x.t
-
-moments::skewness(sv_norm$x.t)
-moments::kurtosis(sv_norm$x.t)
-
-# variogram map for geometrical anisotropy
 
 
-ggdensity(sv_sf, x='svgrad_norm') +
-  stat_overlay_normal_density(color='red', linetype='dashed')
 ```
 
 ```{r}
@@ -144,91 +265,4 @@ zon_rg = 50E3
 zon_90 = vgm(0.58, "Sph", 1E12, anis=c(0, 50E3/1E12))
 zon_0 = vgm(0.45, "Sph", 1E12, anis=c(90,30E3/1E12))
 vm = vgm(0.45, "Exp", 30E3, add.to = zonal)
-
-
-plot(sv_vmap, threshold =500)
-
-  
-
-
-
-
-
-plot(sv_v,zon_0)
-```
-
-```{r}
-# fit sv model with geometric anisotropy - same variograms, but with a different
-# range
-
-vgm_mod = vgm(anis=c(0,0.5), range = 800000, anis1=0.2, anis2=0.4)
-
-vgm_mod = vgm(psill=0.4, "Sph", 20000, nugget=0, alpha = 90)
-x = vgm(psill=0.6, "Lin", 45000, nugget=0, alpha = 0, add.to=x)
-
-
-
-
-plot(sv_vgm)
-x = vgm("Sph",anis=c(90,0.1)) 
-x = vgm("Lin",0, anis=c(90,0.1),add.to=x)
-x = vgm("Exp", add.to=x)
-
-
-sv_vgm_fit = fit.variogram(sv_vgm, model=vgm_mod)
-sv_vgm_fit$ang1 = c(0,90)
-plot(sv_vgm, sv_vgm_fit)
-x
-
-data(meuse)
-coordinates(meuse) = ~x+y
-# let's do some manual fitting of two direct variograms and a cross variogram
-g <- gstat(id = "ln.zinc", formula = log(zinc)~1, data = meuse)
-g <- gstat(g, id = "ln.lead", formula = log(lead)~1, data = meuse)
-# examine variograms and cross variogram:
-plot(variogram(g))
-# enter direct variograms:
-g <- gstat(g, id = "ln.zinc", model = vgm(.55, "Sph", 900, .05))
-g <- gstat(g, id = "ln.lead", model = vgm(.55, "Sph", 900, .05))
-# enter cross variogram:
-g <- gstat(g, id = c("ln.zinc", "ln.lead"), model = vgm(.47, "Sph", 900, .03))
-plot(variogram(g), model = g$model, main = "models fitted by eye")
-```
-
-```{r}
-demo(meuse,ask=FALSE,echo=FALSE)
-v = variogram(log(zinc)~1, meuse, alpha = c(0,45,90,135))
-vm = vgm(.25, "Sph", 1000, anis = c(45, 0.5))
-plot(v, vm, main = "geometric")
-zonal = vgm(.5, "Sph", 1e9, anis = c(45, 1/1e6))
-vm = vgm(.25, "Sph", 1000, add.to = zonal)
-plot(v, vm, main = "zonal")
-
-```
-
-```{r}
-vgm()
-vgm("Sph")
-vgm(NA, "Sph", NA, NA)
-vgm(, "Sph") # "Sph" is second argument: NO nugget in this case
-vgm(10, "Exp", 300)
-x <- vgm(10, "Exp", 300)
-vgm(10, "Nug", 0)
-vgm(10, "Exp", 300, 4.5)
-vgm(10, "Mat", 300, 4.5, kappa = 0.7)
-x = vgm( 10, "Exp", 600, add.to = x)
-vgm(10, "Exp", 300, anis = c(30, 0.5))
-vgm(10, "Exp", 300, anis = c(30, 10, 0, 0.5, 0.3))
-# Matern variogram model:
-vgm(1, "Mat", 1, kappa=.3)
-x <- vgm(0.39527463, "Sph", 953.8942, nugget = 0.06105141)
-x
-print(x, digits = 3);
-# to see all components, do
-print.data.frame(x)
-vv=vgm(model = "Tab",  covtable = 
-	variogramLine(vgm(1, "Sph", 1), 1, n=1e4, min = 0, covariance = TRUE))
-vgm(c("Mat", "Sph"))
-vgm(, c("Mat", "Sph")) # no nugget
-
 ```

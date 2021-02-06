@@ -13,6 +13,7 @@ library(tidyverse)
 library(janitor)
 library(plot3D)
 library(viridis)
+library(raster)
 ```
 
 Setup our study bounds and make a 2.5 km x 2.5 km raster grid
