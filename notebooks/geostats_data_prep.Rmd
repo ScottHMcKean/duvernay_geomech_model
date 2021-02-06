@@ -76,7 +76,7 @@ sv_sf <- read_tsv('../data/shen2018/DIG_2018_0013_vertical_stress.txt') %>%
   mutate(svgrad_kpa_m = vertical_stress/datum_mbgs) %>%
   dplyr::select(datum_elev_masl, datum_mbgs, sv_mpa, svgrad_kpa_m)
 
-save(sv_sf, file='../cache/sv_sf.rds')
+st_write(sv_sf, "../cache/sv_sf.GeoJSON")
 ```
 
 Show 2D and 3D gradients using viridis scale. The 3D plot demonstrates vertical variability across study area and shows why stress gradient is so important.
@@ -121,7 +121,7 @@ shmin_sf <- read_tsv('../data/shen2018/DIG_2018_0013_DFITSh.txt') %>%
   dplyr::mutate(shmingrad_kpa_m = shmin / (datum_tvd - 7)) %>%
   dplyr::select(datum_elev_masl, datum_mbgs, shmin_mpa, shmingrad_kpa_m)
 
-save(shmin_sf, file='../cache/shmin_sf.rds')
+st_write(shmin_sf, "../cache/shmin_sf.GeoJSON")
 ```
 
 Load Shen's 2018 pore pressure data. Following their approach, we take static
@@ -148,7 +148,7 @@ pp_sf <- read_tsv('../data/shen2018/DIG_2018_0013_pore_pressure.txt') %>%
   dplyr::mutate(ppgrad_kpa_m = pp/(datum_tvd-7)) %>%
   dplyr::select(datum_elev_masl, datum_mbgs, pp_mpa, ppgrad_kpa_m)
 
-save(pp_sf, file='../cache/pp_sf.rds')
+st_write(pp_sf, "../cache/pp_sf.GeoJSON")
 ```
 
 Show 2D and 3D gradients using magma scale. Really shows the sparsity of the 

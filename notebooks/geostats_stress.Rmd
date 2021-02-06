@@ -1,0 +1,111 @@
+---
+title: "Geostatistics CoSimulation"
+author: "Scott McKean"
+date: "05/02/2021"
+output: html_document
+---
+
+This document goes over development of a LMC and cosimulation of stress data
+
+```{r setup, include=FALSE}
+library(sf)
+library(gstat)
+library(sp)
+```
+
+## Load spatial dataframes
+
+See 'geostats_data_prep.Rmd' to generate these files and dump into the cache.
+Read GeoJSONs from the cache.
+
+```{r cars}
+sv_sf = st_read('../cache/sv_sf.GeoJSON')
+pp_sf = st_read('../cache/pp_sf.GeoJSON')
+shmin_sf = st_read('../cache/shmin_sf.GeoJSON')
+```
+## Cosimulation 
+
+We are going to cosimulate stress values using a Linear Model of Coregionalization (LMC)
+via gstat. We could get fancier, but that's not what is important, what is important
+is that we have heterotopic data underpinned by an exhaustive secondary variable
+and need to quantify the uncertainty in our stress measurements, and how that 
+compares to our model uncertainty.
+
+```{r}
+sv_sp = as_Spatial(sv_sf)
+pp_sp = as_Spatial(pp_sf)
+shmin_sp = as_Spatial(shmin_sf)
+
+# we can load all data into a gstat despite different support 
+# this is good
+g = gstat(id='sv', formula=svgrad_kpa_m~1, data=sv_sp)
+g = gstat(g, id='pp', formula=ppgrad_kpa_m~1, data=pp_sp)
+g = gstat(g, id='shmin', formula=shmingrad_kpa_m~1, data=shmin_sp)
+
+
+
+# fit sv model with geometric anisotropy - same variograms, but with a different
+# range
+sv_vgm = variogram(id='sv', svgrad_kpa_m~1, sv_sp, alpha=c(0,90))
+vgm_mod = vgm(anis=c(0,0.5), range = 800000, anis1=0.2, anis2=0.4)
+
+vgm_mod = vgm(psill=0.4, "Sph", 20000, nugget=0, alpha = 90)
+x = vgm(psill=0.6, "Lin", 45000, nugget=0, alpha = 0, add.to=x)
+
+
+fit.lmc(variogram(g))
+
+
+
+plot(sv_vgm)
+x = vgm("Sph",anis=c(90,0.1)) 
+x = vgm("Lin",0, anis=c(90,0.1),add.to=x)
+x = vgm("Exp", add.to=x)
+
+
+sv_vgm_fit = fit.variogram(sv_vgm, model=vgm_mod)
+sv_vgm_fit$ang1 = c(0,90)
+plot(sv_vgm, sv_vgm_fit)
+x
+
+data(meuse)
+coordinates(meuse) = ~x+y
+# let's do some manual fitting of two direct variograms and a cross variogram
+g <- gstat(id = "ln.zinc", formula = log(zinc)~1, data = meuse)
+g <- gstat(g, id = "ln.lead", formula = log(lead)~1, data = meuse)
+# examine variograms and cross variogram:
+plot(variogram(g))
+# enter direct variograms:
+g <- gstat(g, id = "ln.zinc", model = vgm(.55, "Sph", 900, .05))
+g <- gstat(g, id = "ln.lead", model = vgm(.55, "Sph", 900, .05))
+# enter cross variogram:
+g <- gstat(g, id = c("ln.zinc", "ln.lead"), model = vgm(.47, "Sph", 900, .03))
+plot(variogram(g), model = g$model, main = "models fitted by eye")
+```
+
+```{r}
+vgm()
+vgm("Sph")
+vgm(NA, "Sph", NA, NA)
+vgm(, "Sph") # "Sph" is second argument: NO nugget in this case
+vgm(10, "Exp", 300)
+x <- vgm(10, "Exp", 300)
+vgm(10, "Nug", 0)
+vgm(10, "Exp", 300, 4.5)
+vgm(10, "Mat", 300, 4.5, kappa = 0.7)
+x = vgm( 10, "Exp", 600, add.to = x)
+vgm(10, "Exp", 300, anis = c(30, 0.5))
+vgm(10, "Exp", 300, anis = c(30, 10, 0, 0.5, 0.3))
+# Matern variogram model:
+vgm(1, "Mat", 1, kappa=.3)
+x <- vgm(0.39527463, "Sph", 953.8942, nugget = 0.06105141)
+x
+print(x, digits = 3);
+# to see all components, do
+print.data.frame(x)
+vv=vgm(model = "Tab",  covtable = 
+	variogramLine(vgm(1, "Sph", 1), 1, n=1e4, min = 0, covariance = TRUE))
+vgm(c("Mat", "Sph"))
+vgm(, c("Mat", "Sph")) # no nugget
+
+```
