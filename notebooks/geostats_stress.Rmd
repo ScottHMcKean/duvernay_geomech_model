@@ -30,10 +30,16 @@ library(viridis)
 See 'geostats_data_prep.Rmd' to generate these files and dump into the cache.
 Read GeoJSONs from the cache.
 
+We run an aggregation function to take the mean gradient across measurement
+points because a) we aren't doing 3D kriging, and b) because geostatistics doesn't
+work with zero distance variance that isn't equal to zero
+
 ```{r cars}
-sv_sf = st_read('../cache/sv_sf.GeoJSON')
-pp_sf = st_read('../cache/pp_sf.GeoJSON')
-shmin_sf = st_read('../cache/shmin_sf.GeoJSON')
+sv_sf = st_read('../cache/sv_sf.GeoJSON') 
+pp_sf = st_read('../cache/pp_sf.GeoJSON') %>% 
+  aggregate(., by=pp_sf %>% distinct(), mean)
+shmin_sf = st_read('../cache/shmin_sf.GeoJSON') %>% 
+  aggregate(., by=shmin_sf %>% distinct(), mean)
 ```
 # Variography
 
@@ -91,7 +97,7 @@ trying to fit an LMC, we try to keep variogram structures simple. A anisotropy
 of 75% reflects the variogram map nicely. Good enough to start.
 
 ```{r}
-sv_v = variogram(svgrad_norm~x+y, sv_sp, alpha=c(67,157)) 
+sv_v = variogram(svgrad_norm~1, sv_sp, alpha=c(67,157)) 
 plot(sv_v)
 
 sv_vgm = vgm(0.3, "Lin", 15E3, anis=c(67, 0.75))
@@ -156,7 +162,6 @@ A uninformative variogram here might be best solution. We use a spherical variog
 
 ```{r}
 pp_v = variogram(ppgrad_norm~1, pp_sp)
-pp_v$dist[1] = 100
 pp_vgm = vgm(1, "Sph", 10000)
 plot(pp_v, pp_vgm)
 ```
@@ -213,7 +218,6 @@ sh_v = variogram(shgrad_norm~1, sh_sp)
 sh_vgm = vgm(1, "Sph", 10000)
 plot(sh_v, sh_vgm)
 ```
-```
 
 
 ## Cosimulation 
@@ -228,41 +232,13 @@ compares to our model uncertainty.
 # we can load all data into a gstat despite different support 
 # this is good
 g = gstat(id='sv', formula=svgrad_norm~1, data=sv_sp)
+g = gstat(g, id='sv', model=sv_vgm)
 g = gstat(g, id='pp', formula=ppgrad_norm~1, data=pp_sp)
-g = gstat(g, id='shmin', formula=shgrad_kpa_m~1, data=sh_sp)
-```
 
-Describe the distribution of our secondary variable (Sv). The distribution
-is fairly symettrical but shows kurtosis.
-George & Mallery, 2010). 
-
-- Check skewness and kurtosis
-
-We should perform an NScore Transform
-
-```{r}
-# investigate normality
-
-
-
-
-```
-
-```{r}
-ggplot(sv_sf) +
-  geom_density(aes(svgrad_kpa_m)) +
-  stat
-
-
-
-ggdensity(df, x = "CONT", fill = "lightgray", title = "CONT") +
-  scale_x_continuous(limits = c(3, 12)) +
-  stat_overlay_normal_density(color = "red", linetype = "dashed")
-
-
-plot(sv_v)
-zon_rg = 50E3
-zon_90 = vgm(0.58, "Sph", 1E12, anis=c(0, 50E3/1E12))
-zon_0 = vgm(0.45, "Sph", 1E12, anis=c(90,30E3/1E12))
-vm = vgm(0.45, "Exp", 30E3, add.to = zonal)
+g = gstat(g, id='pp', formula=ppgrad_norm~1, data=pp_sp)
+g = gstat(g, id='shmin', formula=shgrad_norm~1, data=sh_sp)
+g = gstat(g, model=vgm(1, "Sph", 10000, 1), fill.all=T)
+x = variogram(g)
+gfit = fit.lmc(x, g)
+plot(x, gfit)
 ```
