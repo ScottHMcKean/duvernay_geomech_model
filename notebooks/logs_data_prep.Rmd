@@ -6,33 +6,86 @@ output: html_document
 ```{r setup, include=FALSE}
 source('../R/read_las_files.R')
 library(tidyverse)
+library(janitor)
 library(data.table)
+library(plot3D)
+library(viridis)
+library(raster)
+library(sf)
+# set study bounds
+study_bound_coords <- rbind(
+  c(460000, 5980000), c(460000, 6080000), c(560000, 6080000), 
+  c(560000, 5980000), c(460000, 5980000)
+  )
+
+# make a polygon
+study_bounds <- list(study_bound_coords) %>%
+  st_polygon() %>%
+  st_sfc(., crs = 26911) %>%
+  st_sf(.)
+
+study_proj = st_crs(study_bounds)$proj4string
+
+# make a 2500x2500 m raster
+study_raster <- raster(
+  extent(study_bounds), 
+  resolution = 2500,
+  crs = st_crs(study_bounds)$proj4string
+  )
 ```
-# Find las files
+
+# Load surface locations
 
 ```{r}
-files <- list.files('./duvernay_las_files/', full.names = TRUE)
+surface_locs = sf::st_read(
+  dsn = '../data-raw/sh_shapefile/', layer='ST37_SH_GCS_NAD83') %>% 
+  st_transform(., crs = 26911)
+
+study_locs = surface_locs %>% filter(
+  st_within(surface_locs, study_bounds,sparse = FALSE)
+  )
+
+well_list = read_tsv(
+  '../data-raw/sh_shapefile/WellList.txt', 
+  col_names = c('uwi_disp','uwi','flag','name','field','pool','os_area',
+                'os_dep','license', 'status', 'issue_data', 'code','agent', 
+                'operator','drill_data', 'td_m','stat_code', 'stat_date', 
+                'fluid', 'mode', 'struct', 'scheme', 'scheme_sub')
+  )
+
+
+
+# Filter to study bounds
 ```
 
+# Find las files and uwis
+
+```{r}
+files <- list.files('../data-raw/las_files/', full.names = FALSE)
+
+short_uwis <- files %>%
+    str_replace_all(., '.las', '') %>%
+    str_replace_all(., 'w', 'W')
+```
+
+# See how many coordinates we have
+
+```{r}
+(short_uwis %in% wheaders$unformatted_api_uwi) %>% sum()
+
+```
 
 # Try out Read Las Functions on desired wells
 
 ```{r}
-combined_wells <- read_csv('combined_las_geomech_wells.csv')
 
-match_uwi <- combined_wells %>%
-  pull(match_api) %>%
-  str_replace_all(., "-", "") %>%
-  str_replace_all(., "/", "")
 
-files <- list.files('./duvernay_las_files/', full.names = TRUE)
+# load log files
+# get uwis in study bounds
+# read las files
+# pull out duvernay bounds using top/bottom surfaces from AGS
+# 
 
-short_uwis <- files %>%
-    str_replace_all(., './duvernay_las_files/', '') %>%
-    str_replace_all(., '.las', '') %>%
-    str_replace_all(., 'w', 'W')
-
-files_filt <- files[short_uwis %in% match_uwi]
 
 get_log_data <- function(file){
   short_uwi <- file %>%

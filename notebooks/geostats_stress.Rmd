@@ -322,7 +322,7 @@ g
 
 Do conditional Gaussian cosimulation with three variables, a local neighbourhood of 50 points.
 
-The LMC is likely a poor representation, representing a maximum likelihood estimation given positive definiteness, however, a Bayesian approach would likely be better... but for the purposes of this study we don't care.
+The LMC is likely a poor representation, representing a maximum likelihood estimation given positive definiteness, however, a Bayesian approach would likely be better... but for the purposes of this study we don't care. Honestly, the default settings aren't important because it is so difficult to fit a positive definite matrix with the variograms we see...
 
 This fit isn't significantly improved by simulating two variables at a time, so we stick with a full cosimulation with LMC, despite a poor fit of the LMC. Bayesian methods may be able to improve upon this, but it still serves the point of quantifying uncertainty.
 
