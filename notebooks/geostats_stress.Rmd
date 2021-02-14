@@ -13,6 +13,7 @@ This document goes over development of a LMC and cosimulation of stress data
 # geospatial packages
 library(sf)
 library(gstat)
+library(raster)
 library(sp)
 
 # statistical normalization and analysis
@@ -23,6 +24,8 @@ library(bestNormalize)
 # data munging & plotting
 library(tidyverse)
 library(viridis)
+
+source('../R/geospatial.R')
 ```
 
 ## Load spatial dataframes
@@ -36,9 +39,11 @@ work with zero distance variance that isn't equal to zero
 
 ```{r cars}
 sv_sf = st_read('../cache/sv_sf.GeoJSON') 
-pp_sf = st_read('../cache/pp_sf.GeoJSON') %>% 
+pp_sf = st_read('../cache/pp_sf.GeoJSON') 
+pp_sf = pp_sf %>% 
   aggregate(., by=pp_sf %>% distinct(), mean)
-shmin_sf = st_read('../cache/shmin_sf.GeoJSON') %>% 
+shmin_sf = st_read('../cache/shmin_sf.GeoJSON') 
+shmin_sf = shmin_sf %>% 
   aggregate(., by=shmin_sf %>% distinct(), mean)
 ```
 # Variography
@@ -96,14 +101,16 @@ direction of 157 degrees, and a trend in the shorter direction. Because we are
 trying to fit an LMC, we try to keep variogram structures simple. A anisotropy 
 of 75% reflects the variogram map nicely. Good enough to start.
 
+We use only spherical and nugget models to keep things simple. To make a valid
+model, every model should have one nugget and two spherical variograms.
+
 ```{r}
 sv_v = variogram(svgrad_norm~1, sv_sp, alpha=c(67,157)) 
 plot(sv_v)
 
-sv_vgm = vgm(0.3, "Lin", 15E3, anis=c(67, 0.75))
-sv_vgm = vgm(0.7, "Sph", 50E3, add.to=sv_vgm)
+sv_vgm = vgm(0.69, "Sph", 50E3, nugget = 0.01)
+sv_vgm = vgm(0.3, "Sph", 15E3, anis=c(67, 0.75), add.to=sv_vgm)
 plot(sv_v, sv_vgm)
-
 ```
 ## Descriptive Variography - SV
 
@@ -161,9 +168,13 @@ ggvariogram_map(
 A uninformative variogram here might be best solution. We use a spherical variogram with a short range (10 km) to fit our first observation. We need a model, so this is a pretty broad assumption. The other alternative is full nugget, but that simply imparts random noise and isn't all that useful for cosimulation.
 
 ```{r}
-pp_v = variogram(ppgrad_norm~1, pp_sp)
-pp_vgm = vgm(1, "Sph", 10000)
+pp_v = variogram(ppgrad_norm~1, pp_sp, alpha=c(67,157))
+
+pp_vgm = vgm(0.1, "Sph", 50E3, nugget = 0.1)
+pp_vgm = vgm(0.85, "Sph", 15E3, anis=c(67, 0.75), add.to=pp_vgm)
 plot(pp_v, pp_vgm)
+
+pp_vgm
 ```
 ## Descriptive Variography - Minimum Horizontal Stress
 
@@ -214,9 +225,12 @@ ggvariogram_map(
 We apply the same variogram as pore pressure
 
 ```{r}
-sh_v = variogram(shgrad_norm~1, sh_sp)
-sh_vgm = vgm(1, "Sph", 10000)
+sh_v = variogram(shgrad_norm~1, sh_sp, alpha=c(67,157))
+
+sh_vgm = vgm(0.5, "Sph", 50E3, nugget = 0.1)
+sh_vgm = vgm(0.5, "Sph", 15E3, anis=c(157, 0.5), add.to=sh_vgm)
 plot(sh_v, sh_vgm)
+sh_vgm
 ```
 
 
@@ -228,17 +242,95 @@ is that we have heterotopic data underpinned by an exhaustive secondary variable
 and need to quantify the uncertainty in our stress measurements, and how that 
 compares to our model uncertainty.
 
-```{r}
-# we can load all data into a gstat despite different support 
-# this is good
-g = gstat(id='sv', formula=svgrad_norm~1, data=sv_sp)
-g = gstat(g, id='sv', model=sv_vgm)
-g = gstat(g, id='pp', formula=ppgrad_norm~1, data=pp_sp)
+We first try with two variables to develop intuition about cross-variogram fitting
 
-g = gstat(g, id='pp', formula=ppgrad_norm~1, data=pp_sp)
-g = gstat(g, id='shmin', formula=shgrad_norm~1, data=sh_sp)
-g = gstat(g, model=vgm(1, "Sph", 10000, 1), fill.all=T)
-x = variogram(g)
-gfit = fit.lmc(x, g)
-plot(x, gfit)
+```{r}
+# make a prediction grid
+st_grid <- rasterToPoints(study_raster, spatial = TRUE)
+gridded(st_grid) <- TRUE
+st_grid <- as(st_grid, "SpatialPixels")
+```
+
+```{r}
+```
+
+```{r}
+vec = c(1,0.5,0.5,0,0,0)
+names(vec) = c('sv','sh', 'pp', 'sv-sh', 'sv-pp', 'sh-pp')
+
+mat = matrix(
+  c(vec['sv'], vec['sv-sh'], vec['sv-pp'], 
+    vec['sv-sh'], vec['sh'], vec['sh-pp'], 
+    vec['sv-pp'], vec['sh-pp'], vec['pp']),
+  nrow=3
+)
+
+posdef(mat)
+```
+```{r}
+
+```
+
+
+Try to see if we can fit an LMC using the eyeballed variograms
+
+```{r}
+# secondary (SV)
+sv_vgm = vgm(0, "Sph", 50E3)
+sv_vgm = vgm(0, "Lin", 10E3, add.to=sv_vgm)
+sv_vgm = vgm(0, "Sph", 1E3, add.to=sv_vgm)
+g = gstat(id='sv', formula=svgrad_norm~1, data=sv_sp, beta=0, nmax=50)
+g = gstat(g, id='sv', model=sv_vgm)
+
+# primary (SH)
+sh_vgm = vgm(0, "Sph", 50E3)
+sh_vgm = vgm(0, "Lin", 10E3, add.to=sh_vgm)
+sh_vgm = vgm(0, "Sph", 1E3, add.to=sh_vgm)
+g = gstat(g, id='shmin', formula=shgrad_norm~1, data=sh_sp, beta=0, nmax=50)
+g = gstat(g, id='shmin', model=sh_vgm)
+
+# primary (PP)
+pp_vgm = vgm(0, "Sph", 50E3)
+pp_vgm = vgm(0, "Lin", 10E3, add.to=pp_vgm)
+pp_vgm = vgm(0, "Sph", 1E3, add.to=pp_vgm)
+g = gstat(g, id='pp', formula = ppgrad_norm~1, data=pp_sp, beta=0, nmax=50)
+g = gstat(g, id='pp', model=pp_vgm)
+
+# covariance
+sv_sh_vgm = vgm(0, "Sph", 50E3)
+sv_sh_vgm = vgm(0, "Lin", 10E3, add.to = sv_sh_vgm)
+sv_sh_vgm = vgm(0, "Sph", 1E3, add.to=sv_sh_vgm)
+g = gstat(g, id=c('sv','shmin'), model=sv_sh_vgm, beta=0, nmax=50)
+
+sv_pp_vgm = vgm(0, "Sph", 50E3)
+sv_pp_vgm = vgm(0, "Lin", 10E3, add.to = sv_pp_vgm)
+sv_pp_vgm = vgm(0, "Sph", 1E3, add.to=sv_pp_vgm)
+g = gstat(g, id=c('sv','pp'), model=sv_pp_vgm, beta=0, nmax=50)
+
+sh_pp_vgm = vgm(0, "Sph", 50E3)
+sh_pp_vgm = vgm(0, "Lin", 10E3, add.to = sh_pp_vgm)
+sh_pp_vgm = vgm(0, "Sph", 1E3, add.to=sh_pp_vgm)
+g = gstat(g, id=c('shmin','pp'), model=sh_pp_vgm, beta=0, nmax=50)
+
+v = variogram(g)
+
+g = fit.lmc(v,g, fit.ranges=FALSE, fit.lmc =TRUE, fit.sills=TRUE, fit.method=7)
+
+plot(v,g)
+g
+```
+
+Do conditional Gaussian cosimulation with three variables, a local neighbourhood of 50 points.
+
+The LMC is likely a poor representation, representing a maximum likelihood estimation given positive definiteness, however, a Bayesian approach would likely be better... but for the purposes of this study we don't care.
+
+This fit isn't significantly improved by simulating two variables at a time, so we stick with a full cosimulation with LMC, despite a poor fit of the LMC. Bayesian methods may be able to improve upon this, but it still serves the point of quantifying uncertainty.
+
+- Matrices are positive definite
+- Matrices pass Cauchy-Schwartz inequality
+- Simulation relies primarily on the cross-variograms, which means the absolute values may very but the relative difference should be minimized, which is very important for this study.
+
+```{r}
+g$set = list(nocheck=1)
+pred = predict(g, st_grid, nsim=10)
 ```

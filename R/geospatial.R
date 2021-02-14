@@ -54,3 +54,4 @@ ggvariogram_map = function(formula, sp_df, cutoff=NA, width=NA, threshold=NA){
     theme(legend.position = 'top') +
     scale_fill_viridis(option='cividis')
 }
+

@@ -1,0 +1,100 @@
+---
+title: "las_reader"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+source('../R/read_las_files.R')
+library(tidyverse)
+library(data.table)
+```
+# Find las files
+
+```{r}
+files <- list.files('./duvernay_las_files/', full.names = TRUE)
+```
+
+
+# Try out Read Las Functions on desired wells
+
+```{r}
+combined_wells <- read_csv('combined_las_geomech_wells.csv')
+
+match_uwi <- combined_wells %>%
+  pull(match_api) %>%
+  str_replace_all(., "-", "") %>%
+  str_replace_all(., "/", "")
+
+files <- list.files('./duvernay_las_files/', full.names = TRUE)
+
+short_uwis <- files %>%
+    str_replace_all(., './duvernay_las_files/', '') %>%
+    str_replace_all(., '.las', '') %>%
+    str_replace_all(., 'w', 'W')
+
+files_filt <- files[short_uwis %in% match_uwi]
+
+get_log_data <- function(file){
+  short_uwi <- file %>%
+    str_replace(., './duvernay_las_files/', '') %>%
+    str_replace(., '.las', '') %>%
+    str_replace_all(., 'w', 'W')
+  
+  readLASFileIntoTable(file, short = short_uwi)
+}
+
+log_list <- map(.x = files_filt, get_log_data)
+
+log_names <- map(.x = log_list, .f = colnames) %>%
+  unlist() %>%
+  unique()
+
+logs_df <- bind_rows(log_list) %>%
+  janitor::clean_names()
+
+logs_df %>%
+  group_by(uwi) %>%
+  summarise(rows = n(), 
+            rhob = sum(na.omit(rhob_qcgeo_k_m) > 0),
+            dtc = sum(na.omit(dtc_qcgeo_us_m) > 0),
+            dts = sum(na.omit(dts_qcgeo_us_m) > 0 ))
+
+# all logs have density (and thus vertical stress)
+# 12/13 logs have compressional sonic
+# 10/13 logs have shear sonic
+
+write.csv(logs_df, 'duvernay_las_processed.csv')
+
+logs_df <- read_csv('duvernay_las_processed.csv')
+library(lasoo)
+```
+# Queue up the entire log set for the duvernay to see how many have dtc vs dts. 
+
+```{r}
+all_log_list <- map(.x = files[1], get_log_data)
+
+write_rds(all_log_list, 'test_log_list.rds')
+
+all_log_names <- map(.x = all_log_list, .f = colnames) %>%
+  unlist() %>%
+  unique()
+
+all_logs_df <- bind_rows(all_log_list) %>%
+  janitor::clean_names()
+
+write_csv(all_logs_df, 'test_logs.csv')
+
+all_logs_summary <- all_logs_df %>%
+  group_by(uwi) %>%
+  summarise(rows = n(), 
+            rhob = sum(na.omit(rhob_qcgeo_k_m) > 0),
+            dtc = sum(na.omit(dtc_qcgeo_us_m) > 0),
+            dts = sum(na.omit(dts_qcgeo_us_m) > 0))
+
+
+
+all_logs_df %>%
+  group_by(uwi) %>%
+  summarise(rows = n())
+```
+
