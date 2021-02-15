@@ -5,13 +5,17 @@ output: html_document
 
 This study references numerous geospatial layers, including polygons,
 points, and rasters. These layers are preprocessed here and saved in the data
-folder for reproducibility and code efficiency. In the code below, vector-format 
-layers (points, etc.) are saved as GeoJSON files and raster-format layers are saved
-as GeoTiffs. 
+folder for reproducibility and code efficiency. Below, vector-format 
+layers (points, etc.) are saved as GeoJSON files and raster-format layers are 
+saved as GeoTiffs. 
 
 ```{r setup, include=FALSE}
 library(raster)
 library(sf)
+library(tidyverse)
+library(janitor)
+library(ggplot2)
+library(dplyr)
 ```
 
 ## Setup study bounds
@@ -33,7 +37,7 @@ study_bounds <- list(study_bound_coords) %>%
 
 study_proj = st_crs(study_bounds)$proj4string
 
-st_write(study_bounds, '../data/study_bounds.GeoJSON')
+st_write(study_bounds, '../data/study_bounds.GeoJSON', delete_dsn = TRUE)
 ```
 
 ## Make a 2500x2500 m raster
@@ -47,7 +51,7 @@ study_raster <- raster(
   crs = st_crs(study_bounds)$proj4string
   )
 
-writeRaster(study_raster, '../data/study_raster.tif')
+writeRaster(study_raster, '../data/study_raster.tif', overwrite=TRUE)
 ```
 
 ## Creat a Duvernay-wide raster for mapping purposes
@@ -92,7 +96,7 @@ study_locs = study_locs %>%
   merge(well_list %>% dplyr::select(licence, uwi = uwi_clean), 
         on='licence', how='left')
 
-st_write(study_locs, '../data/study_surf_locs.GeoJSON')
+st_write(study_locs, '../data/study_surf_locs.GeoJSON', delete_dsn = TRUE)
 ```
 
 Load the Duvernay isopach and write the study mask for predictions & figures:
@@ -106,12 +110,12 @@ dv_bounds <- st_read(dsn = '../data-raw/dvisopach/', layer = 'fg1217_py_ll') %>%
   dplyr::filter(descr1 != 'Mixed dolomite and evaporite') %>%
   dplyr::filter(descr1 != 'Limestone')
 
-st_write(dv_bounds, '../data/entire_dv_bounds.GeoJSON', delete_layer=TRUE)
+st_write(dv_bounds, '../data/entire_dv_bounds.GeoJSON', delete_dsn=TRUE)
 
 study_dv_bounds <- dv_bounds %>%
   st_intersection(study_bounds)
 
-st_write(study_dv_bounds, '../data/study_dv_bounds.GeoJSON',delete_layer=TRUE)
+st_write(study_dv_bounds, '../data/study_dv_bounds.GeoJSON', delete_dsn=TRUE)
 ```
 
 Load the ground surface from Alberta Geological Survey's 3D Model
@@ -134,7 +138,7 @@ ggplot() +
   geom_tile(data=surface_df, aes(x=x,y=y,fill=ground_elev_masl)) +
   geom_sf(data=study_dv_bounds, fill=NA, colour='yellow')
 
-writeRaster(ground_surface, '../data/ground_elev_masl.tif',overwrite=TRUE)
+writeRaster(ground_surface, '../data/ground_elev_masl.tif', overwrite=TRUE)
 ```
 
 Load the Duvernay top from Alberta Geological Survey's 3D Model
@@ -156,7 +160,7 @@ ggplot() +
   geom_tile(data=dv_top_df, aes(x=x,y=y,fill=dv_top_masl)) +
   geom_sf(data=study_dv_bounds, fill=NA, colour='yellow')
 
-writeRaster(dv_top, '../data/dv_top_masl.tif',overwrite=TRUE)
+writeRaster(dv_top, '../data/dv_top_masl.tif', overwrite=TRUE)
 ```
 
 Load the Duvernay Base
@@ -178,7 +182,7 @@ ggplot() +
   geom_tile(data=dv_base_df, aes(x=x,y=y,fill=dv_base_masl)) +
   geom_sf(data=study_dv_bounds, fill=NA, colour='yellow')
 
-writeRaster(dv_base, '../data/dv_base_masl.tif',overwrite=TRUE)
+writeRaster(dv_base, '../data/dv_base_masl.tif', overwrite=TRUE)
 ```
 Get DV Isopach
 
@@ -194,6 +198,5 @@ ggplot() +
   geom_tile(data=dv_isopach_df, aes(x=x,y=y,fill=dv_isopach_m)) +
   geom_sf(data=study_dv_bounds, fill=NA, colour='yellow')
 
-
-writeRaster(dv_base, '../data/dv_iso_m.tif',overwrite=TRUE)
+writeRaster(dv_base, '../data/dv_iso_m.tif', overwrite=TRUE)
 ```

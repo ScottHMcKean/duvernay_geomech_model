@@ -1,5 +1,4 @@
 #' Make a 3D plot using Plot3D with a viridis colour scale and sf dataframe
-#' @param filepath
 #' @return plot
 #' @export
 make_3d_plot <- function(sf_df, z_col, col_col, col_func=viridis(50), size=0.1){

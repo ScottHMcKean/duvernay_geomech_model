@@ -5,6 +5,7 @@
 \title{Wrapper Function for model generation}
 \usage{
 generate_model(
+  data,
   target,
   features,
   model_type,
