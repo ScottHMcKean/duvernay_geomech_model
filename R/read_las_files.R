@@ -6,7 +6,7 @@
 #' @export
 #'
 #' @examples
-readFileIntoChar <- function(file_name) {
+readFileIntoChar <- function(file_name){
   fi <- file.info(file_name)
   if (!is.na(fi$size) & (!fi$isdir)) {
     conn <- file(file_name, open = "r")
@@ -182,8 +182,7 @@ readLASFileIntoTable <- function(lasfile, short) {
   # Get UWI
   uwi <- check_pull_SubString(asciitxt = asciitxt, sub.str = "UWI")
   # Get Well ID
-  well_id <-
-    check_pull_SubString(asciitxt = asciitxt, sub.str = "WELL")
+  well_id <- check_pull_SubString(asciitxt = asciitxt, sub.str = "WELL")
 
   # This section looks for the curve section that has headers for the data
   # it will ignore the tops section, if it is present

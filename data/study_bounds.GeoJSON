@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "study_bounds",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::26911" } },
+"features": [
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 460000.0, 5980000.0 ], [ 460000.0, 6080000.0 ], [ 560000.0, 6080000.0 ], [ 560000.0, 5980000.0 ], [ 460000.0, 5980000.0 ] ] ] } }
+]
+}

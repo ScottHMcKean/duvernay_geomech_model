@@ -36,6 +36,10 @@ study_raster <- raster(
 
 # Load surface locations
 
+We load the surface hole locations from the AGS well list layer, filter to make
+sure they are in the study bounds, and combine them with the AGS well list to
+get both the license, wellname, uwi etc.
+
 ```{r}
 surface_locs = sf::st_read(
   dsn = '../data-raw/sh_shapefile/', layer='ST37_SH_GCS_NAD83') %>% 
@@ -43,60 +47,76 @@ surface_locs = sf::st_read(
 
 study_locs = surface_locs %>% filter(
   st_within(surface_locs, study_bounds,sparse = FALSE)
-  )
+  ) %>% janitor::clean_names()
 
 well_list = read_tsv(
   '../data-raw/sh_shapefile/WellList.txt', 
   col_names = c('uwi_disp','uwi','flag','name','field','pool','os_area',
-                'os_dep','license', 'status', 'issue_data', 'code','agent', 
+                'os_dep','licence', 'status', 'issue_data', 'code','agent', 
                 'operator','drill_data', 'td_m','stat_code', 'stat_date', 
                 'fluid', 'mode', 'struct', 'scheme', 'scheme_sub')
   )
 
+well_list$uwi_clean = well_list$uwi_disp %>% 
+  str_c(1,.) %>%
+  str_replace(., "/", "") %>% 
+  str_replace(., "/", "0") %>% 
+  str_replace_all(., "-", "")
 
+# Merge with surface locations
+study_locs = study_locs %>% 
+  merge(well_list %>% dplyr::select(licence, uwi = uwi_clean), 
+        on='licence', how='left')
 
-# Filter to study bounds
+st_write(study_locs, '../data/study_surf_locs.GeoJSON')
 ```
 
-# Find las files and uwis
+# Pull up las files
 
 ```{r}
 files <- list.files('../data-raw/las_files/', full.names = FALSE)
 
-short_uwis <- files %>%
+file_uwis <- files %>%
     str_replace_all(., '.las', '') %>%
     str_replace_all(., 'w', 'W')
-```
-
-# See how many coordinates we have
-
-```{r}
-(short_uwis %in% wheaders$unformatted_api_uwi) %>% sum()
 
 ```
 
-# Try out Read Las Functions on desired wells
+# Get unique study locations, and take mean surface location for point location
 
 ```{r}
+unique_study_locs = study_locs %>% 
+  filter((study_locs$uwi %in% file_uwis)) %>%
+  dplyr::select(uwi, latitude, longitude, kbe, ground_elev, geometry) %>% 
+  group_by(uwi) %>% 
+  summarize_all(mean)
+
+ggplot() +
+  geom_sf(data=duvernay_iso) +
+  geom_sf(data=unique_study_locs, aes(colour=ground_elev))
 
 
-# load log files
-# get uwis in study bounds
-# read las files
-# pull out duvernay bounds using top/bottom surfaces from AGS
-# 
+```
+# Get Logs
 
+Okay, so we have 108 logs in our study area. Not bad. Now we take those logs, 
+subset using the AER 3D model
 
+```{r}
+study_files = files[file_uwis %in% unique_study_locs$uwi]
+```
+
+```{r}
 get_log_data <- function(file){
   short_uwi <- file %>%
-    str_replace(., './duvernay_las_files/', '') %>%
     str_replace(., '.las', '') %>%
     str_replace_all(., 'w', 'W')
   
-  readLASFileIntoTable(file, short = short_uwi)
+  filename = str_c('../data-raw/las_files/',file)
+  readLASFileIntoTable(filename, short = short_uwi)
 }
 
-log_list <- map(.x = files_filt, get_log_data)
+log_list <- map(.x = study_files, get_log_data)
 
 log_names <- map(.x = log_list, .f = colnames) %>%
   unlist() %>%
@@ -105,13 +125,18 @@ log_names <- map(.x = log_list, .f = colnames) %>%
 logs_df <- bind_rows(log_list) %>%
   janitor::clean_names()
 
-logs_df %>%
+logs_df %>% fwrite(., '../data-raw/logs_df.csv')
+
+log_summary = logs_df %>%
   group_by(uwi) %>%
   summarise(rows = n(), 
             rhob = sum(na.omit(rhob_qcgeo_k_m) > 0),
             dtc = sum(na.omit(dtc_qcgeo_us_m) > 0),
-            dts = sum(na.omit(dts_qcgeo_us_m) > 0 ))
+            dts = sum(na.omit(dts_qcgeo_us_m) > 0),
+            gr = sum(na.omit(gr_qcgeo_gapi) > 0)
+            )
 
+log_summary %>% filter(gr>0)
 # all logs have density (and thus vertical stress)
 # 12/13 logs have compressional sonic
 # 10/13 logs have shear sonic

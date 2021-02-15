@@ -1,0 +1,251 @@
+---
+title: "Intersect LAS files with 3D geomodel"
+author: "Scott McKean"
+date: "11/3/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(sf)
+library(data.table)
+library(spData)
+library(raster)
+library(rasterVis)
+```
+
+Run read_3d_geomodel_ags first to load layer tops... to be integrated later
+maybe.
+
+## Load Processed Log Files
+
+Load the processed las files (2GB), 280 logs. 
+We don't have lat/long for them though...
+135 logs in the the Kaybob area
+
+```{r cars}
+# Load logs
+logs_df <- fread('../data-raw/logs_df.csv')
+
+log_uwis <- logs_df$uwi %>% unique
+
+# Load study_locations
+rseg_well_comp <- read_csv('./rseg_data/las_comp.csv')
+
+rseg_bool <- rseg_well_comp$Unformatted_API_UWI_12 %in% log_uwis
+
+log_wells <- rseg_well_comp %>%
+  filter(rseg_bool) %>%
+  st_as_sf(.,crs = 4326, coords = c('Longitude', 'Latitude'), remove = FALSE) %>%
+  st_transform(crs = 26911) %>%
+  st_crop(., study_bounds)
+
+study_log_vec <- rseg_well_comp$Unformatted_API_UWI_12 %>% unique()
+
+kaybob_logs <- logs_df %>% 
+  filter(uwi %in% study_log_vec)
+
+las_points <- log_wells %>%
+  dplyr::select(uwi = Unformatted_API_UWI_12, Longitude, Latitude, geometry) %>%
+  st_transform(., crs = 26911) %>%
+  as(., 'Spatial')
+
+top_df <- log_wells %>%
+  dplyr::select(uwi = Unformatted_API_UWI_12, geometry) %>%
+  mutate(ml_top = extract(ml_top_rast, las_points, method = 'bilinear'),
+         dv_top = extract(dv_top_rast, las_points, method = 'bilinear'),
+         ww_top = extract(ww_top_rast, las_points, method = 'bilinear'),
+         sh_top = extract(sh_top_rast, las_points, method = 'bilinear')) %>%
+  na.omit() %>%
+  st_join(log_wells) %>% 
+  mutate(elev_kb_m = ElevationKB_FT * 0.3048)
+
+sorted_top <- top_df %>%
+  dplyr::mutate(sec = str_sub(uwi, 8,10),
+                twp = str_sub(uwi, 11,12)) %>% 
+  dplyr::select(uwi, sec, twp)
+
+# our well log for the study.
+test <- data.frame(x = 503962, y = 5920137)
+
+test_sf <- st_as_sf(test, coords = c('x','y'), crs = 26911)
+
+ggplot(raster_to_df(vert_stress_raster)) +
+  geom_sf(data = duvernay_layer) +
+  geom_tile(aes(x = x, y = y, fill = value/1000)) +
+  geom_sf(data = study_bounds, fill = NA) +
+  scale_fill_viridis_c(name = 'Vertical Stress (MPa)') +
+  geom_sf(data = top_df) +
+  geom_sf(data = test_sf, colour = 'red') +
+  coord_sf(datum = 26911) +
+  theme_minimal() +
+  ggsave('kaybob_study_area_vert_stress.jpg', width = 6, height = 6, dpi = 600)
+```
+
+Get Duvernay Logs
+
+```{r}
+well_top_df <- top_df[1,]
+
+well_uwi <- well_top_df[1,]$uwi
+
+get_formation_wires <- function(well_uwi, top_df, logs_df){
+   well_top_df <- top_df %>%
+    filter(uwi == well_uwi)
+  
+  well_logs <- logs_df %>%
+    filter(uwi == well_uwi) %>%
+    mutate(tvd_m = well_top_df$elev_kb_m - depth_m) %>%
+    mutate(formation = case_when(
+      (tvd_m > well_top_df$dv_top) ~ 'above_duvernay',
+      (tvd_m > well_top_df$ml_top) ~ 'DV',
+      (tvd_m > well_top_df$ww_top) ~ 'ML',
+      (tvd_m > well_top_df$sh_top) ~ 'WW',
+      (tvd_m <= well_top_df$sh_top) ~ 'below_waterways'
+    )) %>%
+    filter(formation != 'above_duvernay',
+           formation != 'below_waterways') %>%
+    dplyr::select(uwi, tvd_m, formation, dtc_qcgeo_us_m, 
+                  dts_qcgeo_us_m, rhob_qcgeo_k_m)
+  
+  well_logs
+  
+}
+
+formation_well_logs <- map_dfr(top_df$uwi, get_formation_wires,
+                               top_df = top_df, logs_df = logs_df)
+
+# manual fix for water ways RHOB values for 1W0130206518W500
+formation_well_logs <- formation_well_logs %>%
+  filter(!(uwi == '1W0130206518W500' & tvd_m <= -2070.8))
+
+```
+
+Get a count of logs and summary stats 
+
+```{r}
+dts_formation_count <- formation_well_logs %>%
+  group_by(uwi) %>%
+  filter(!is.na(dts_qcgeo_us_m)) %>%
+  filter(!is.na(rhob_qcgeo_k_m)) %>%
+  count(formation)
+
+dts_wells <- formation_well_logs %>%
+  filter(!is.na(dts_qcgeo_us_m)) %>%
+  filter(!is.na(rhob_qcgeo_k_m)) %>%
+  pull(uwi) %>%
+  unique
+
+dtc_formation_count <- formation_well_logs %>%
+  group_by(uwi) %>%
+  filter(!is.na(dtc_qcgeo_us_m)) %>%
+  filter(!is.na(rhob_qcgeo_k_m)) %>%
+  count(formation)
+
+rhob_dtc_wells <- formation_well_logs %>%
+  filter(!is.na(dtc_qcgeo_us_m)) %>%
+  filter(!is.na(rhob_qcgeo_k_m)) %>%
+  pull(uwi) %>%
+  unique
+
+# RHOB: 107 for duvernay, 105 for majeau lake, and 103 for waterways
+# DTC: 95 for duvernay, 92 for majeau lake, 90 for waterways
+# DTS: 24 for duvernay, 23 for majeau lake and waterways
+dtc_formation_count %>%
+  filter(formation == 'ML') %>%
+  nrow
+
+# get summary stats
+summary_stats <- formation_well_logs %>%
+  filter(rhob_qcgeo_k_m > 2000) %>%
+  filter(dtc_qcgeo_us_m > 100) %>%
+  group_by(uwi, formation) %>%
+  summarize(RHOB = mean(rhob_qcgeo_k_m),
+            VP = mean(dtc_qcgeo_us_m  ^-1 * 1e6),
+            VS = mean(dts_qcgeo_us_m  ^-1 * 1e6)) %>%
+  gather(., 'key', 'value', -uwi, -formation)
+
+# make a great violin plot
+ggplot(summary_stats) +
+  geom_violin(aes(x = formation, y = value, fill = as.factor(formation))) +
+  geom_jitter(aes(x = formation, y = value),width = 0.25, size = 0.5) +
+  facet_wrap(. ~ key, scales = 'free') +
+  scale_fill_manual(name = 'Formation',
+                    breaks = c('DV','ML', 'WW'),
+                    values = c('#787878','#4B9150','#73B7E3'),
+                    labels = c('Duvernay', 'Majeau Lake', 'Waterways')) +
+  labs(y = '', x = '') +
+  theme_minimal() +
+  ggsave('formation_well_log_summary.jpg', width = 6, height = 6, dpi = 600) +
+  ggsave('formation_well_log_summary.eps', width = 6, height = 6, dpi = 600)
+
+# create a 3D model by aggregating by intervals. 
+upscaled_well_logs_10m <- formation_well_logs %>% 
+  mutate(round_tvd = round(tvd_m, digits = -1)) %>%
+  group_by(uwi, formation,round_tvd) %>%
+  summarize(rhob = mean(rhob_qcgeo_k_m, na.rm = TRUE),
+            dtc = mean(dtc_qcgeo_us_m, na.rm = TRUE),
+            dts = mean(dts_qcgeo_us_m, na.rm = TRUE))
+
+upscaled_well_logs_1m <- formation_well_logs %>% 
+  mutate(round_tvd = round(tvd_m, digits = 0)) %>%
+  group_by(uwi, formation,round_tvd) %>%
+  summarize(rhob = mean(rhob_qcgeo_k_m, na.rm = TRUE),
+            dtc = mean(dtc_qcgeo_us_m, na.rm = TRUE),
+            dts = mean(dts_qcgeo_us_m, na.rm = TRUE))
+
+upscaled_formation_scale <- formation_well_logs %>% 
+  group_by(uwi, formation) %>%
+  summarize(rhob_mean = mean(rhob_qcgeo_k_m, na.rm = TRUE),
+            rhob_sd = sd(rhob_qcgeo_k_m, na.rm = TRUE),
+            dtc_mean = mean(dtc_qcgeo_us_m, na.rm = TRUE),
+            dtc_sd = sd(dtc_qcgeo_us_m, na.rm = TRUE),
+            dts_mean = mean(dts_qcgeo_us_m, na.rm = TRUE),
+            dts_sd = sd(dts_qcgeo_us_m, na.rm = TRUE))
+
+top_df$uwi[1]
+
+final_log_df <- upscaled_formation_scale %>%
+  left_join(., top_df, by = 'uwi') %>%
+  ungroup() %>%
+  cbind(., st_coordinates(.$geometry)) %>%
+  dplyr::select(-geometry)
+
+final_log_df %>% write.csv(., 'final_log_df.csv')
+```
+
+Make a map of observations
+
+```{r}
+dts_wells_df <- top_df %>% 
+  filter(top_df$uwi %in% dts_wells)
+
+dts_logs_df <- final_log_df %>%
+  filter(final_log_df$uwi %in% dts_wells)
+
+dtc_wells_df <- top_df %>% 
+  filter(top_df$uwi %in% rhob_dtc_wells)
+
+dtc_logs_df <- final_log_df %>%
+  filter(final_log_df$uwi %in% rhob_dtc_wells)
+
+ggplot() +
+  geom_sf(data = duvernay_layer, fill = NA) +
+  geom_sf(data = study_bounds, fill = NA) +
+  geom_sf(aes(fill = 'MISSING'), data = top_df, shape = 21) +
+  geom_sf(aes(fill = 'DTC'), data = dtc_wells_df, shape = 21) +
+  geom_sf(aes(fill = 'DTS'), data = dts_wells_df, shape = 21) +
+  ylim(st_bbox(study_bounds)[c(2,4)]) +
+  xlim(st_bbox(study_bounds)[c(1,3)]) +
+  scale_fill_manual(name = 'Logs',
+                    breaks = c('MISSING','DTC', 'DTS'),
+                    values = c('blue','red','black'),
+                    labels = c('Missing', 'DTC ONLY', 'DTC & DTS')) +
+  coord_sf(datum = 26911) +
+  theme_minimal() +
+  ylab('Northing') +
+  xlab('Easting') +
+  theme(legend.position = c(0.25,0.25), 
+        legend.background = element_rect(fill = 'white')) +
+  ggsave('study_logs.jpg', width = 6, height = 6, dpi = 600)
+```

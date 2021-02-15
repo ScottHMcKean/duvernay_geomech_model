@@ -1,0 +1,26 @@
+[general]
+creator=R package 'raster'
+created=2021-02-15 13:20:35
+[georeference]
+nrows=40
+ncols=40
+xmin=460000
+ymin=5980000
+xmax=560000
+ymax=6080000
+projection=+proj=utm +zone=11 +datum=NAD83 +units=m +no_defs
+[data]
+datatype=FLT4S
+byteorder=little
+nbands=1
+bandorder=BIL
+categorical=FALSE
+minvalue=NA
+maxvalue=NA
+nodatavalue=-3.4e+38
+[legend]
+legendtype=
+values=
+color=
+[description]
+layername=layer
