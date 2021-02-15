@@ -3,72 +3,27 @@ title: "las_reader"
 output: html_document
 ---
 
+This notebook loads the .las files from the raw data folder, intersects
+them with the top and base of the Duvernay, and saves the logs back to 
+data-raw folder. Upscaled point values will be provided for reproducibility
+once the Duvernay B Carbonate is identified.
+
 ```{r setup, include=FALSE}
-source('../R/read_las_files.R')
 library(tidyverse)
 library(janitor)
 library(data.table)
-library(plot3D)
-library(viridis)
 library(raster)
 library(sf)
-# set study bounds
-study_bound_coords <- rbind(
-  c(460000, 5980000), c(460000, 6080000), c(560000, 6080000), 
-  c(560000, 5980000), c(460000, 5980000)
-  )
 
-# make a polygon
-study_bounds <- list(study_bound_coords) %>%
-  st_polygon() %>%
-  st_sfc(., crs = 26911) %>%
-  st_sf(.)
-
+# From geospatial_layers_prep.Rmd
+study_bounds = st_read('../data/study_bounds.GeoJSON')
 study_proj = st_crs(study_bounds)$proj4string
-
-# make a 2500x2500 m raster
-study_raster <- raster(
-  extent(study_bounds), 
-  resolution = 2500,
-  crs = st_crs(study_bounds)$proj4string
-  )
-```
-
-# Load surface locations
-
-We load the surface hole locations from the AGS well list layer, filter to make
-sure they are in the study bounds, and combine them with the AGS well list to
-get both the license, wellname, uwi etc.
-
-```{r}
-surface_locs = sf::st_read(
-  dsn = '../data-raw/sh_shapefile/', layer='ST37_SH_GCS_NAD83') %>% 
-  st_transform(., crs = 26911)
-
-study_locs = surface_locs %>% filter(
-  st_within(surface_locs, study_bounds,sparse = FALSE)
-  ) %>% janitor::clean_names()
-
-well_list = read_tsv(
-  '../data-raw/sh_shapefile/WellList.txt', 
-  col_names = c('uwi_disp','uwi','flag','name','field','pool','os_area',
-                'os_dep','licence', 'status', 'issue_data', 'code','agent', 
-                'operator','drill_data', 'td_m','stat_code', 'stat_date', 
-                'fluid', 'mode', 'struct', 'scheme', 'scheme_sub')
-  )
-
-well_list$uwi_clean = well_list$uwi_disp %>% 
-  str_c(1,.) %>%
-  str_replace(., "/", "") %>% 
-  str_replace(., "/", "0") %>% 
-  str_replace_all(., "-", "")
-
-# Merge with surface locations
-study_locs = study_locs %>% 
-  merge(well_list %>% dplyr::select(licence, uwi = uwi_clean), 
-        on='licence', how='left')
-
-st_write(study_locs, '../data/study_surf_locs.GeoJSON')
+study_raster = raster('../data/study_raster.tif')
+study_dv_bounds = st_read('../data/study_dv_bounds.GeoJSON')
+surface_locs = st_read('../data/study_surf_locs.GeoJSON')
+dv_top = raster('../data/dv_top_masl.tif')
+dv_base = raster('../data/dv_base_masl.tif')
+dv_iso = raster('../data/dv_iso_m.tif')
 ```
 
 # Pull up las files
@@ -79,31 +34,52 @@ files <- list.files('../data-raw/las_files/', full.names = FALSE)
 file_uwis <- files %>%
     str_replace_all(., '.las', '') %>%
     str_replace_all(., 'w', 'W')
-
 ```
 
-# Get unique study locations, and take mean surface location for point location
+# Get unique study locations 
+
+We take mean surface location for point locations, since there are multiple 
+coordinates for many uwis. Select pertinent columns and make sure the projection
+is right.
 
 ```{r}
-unique_study_locs = study_locs %>% 
-  filter((study_locs$uwi %in% file_uwis)) %>%
+study_locs = surface_locs %>% 
+  filter((surface_locs$uwi %in% file_uwis)) %>%
   dplyr::select(uwi, latitude, longitude, kbe, ground_elev, geometry) %>% 
   group_by(uwi) %>% 
-  summarize_all(mean)
+  summarize_all(mean) %>%
+  st_simplify()
 
+# verify projections
 ggplot() +
-  geom_sf(data=duvernay_iso) +
-  geom_sf(data=unique_study_locs, aes(colour=ground_elev))
-
-
+  geom_sf(data=study_dv_bounds) +
+  geom_sf(data=study_locs)
 ```
-# Get Logs
+# Extract the Duvernay Top and Base
 
-Okay, so we have 108 logs in our study area. Not bad. Now we take those logs, 
-subset using the AER 3D model
+We lose 4 wells on the outside of the study area because the AGS layer doesn't
+have values for them, but this shouldn't affect the results too much, and 
+ordinary kriging created way too much variance (~500 m) when trying to predict
+the tops, so it wasn't feasible to interpolate the top and base.
 
 ```{r}
-study_files = files[file_uwis %in% unique_study_locs$uwi]
+study_points <- study_locs %>%
+  dplyr::select(uwi,geometry) %>%
+  as(., 'Spatial')
+
+tops <- study_locs %>%
+  mutate(dv_top = raster::extract(dv_top, study_points, method='bilinear')) %>%
+  mutate(dv_base = raster::extract(dv_base, study_points, method='bilinear')) %>%
+  drop_na()
+```
+
+# Get Logs
+
+Okay, so we have 104 logs in our study area with tops. Not bad. Now we take those logs, 
+subset using the AER 3D model (duvernay top and base). 
+
+```{r}
+study_files = files[file_uwis %in% tops$uwi]
 ```
 
 ```{r}

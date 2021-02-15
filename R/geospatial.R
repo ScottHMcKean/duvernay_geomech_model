@@ -16,7 +16,9 @@ make_3d_plot <- function(sf_df, z_col, col_col, col_func=viridis(50), size=0.1){
   )
 }
 
-# make a variogram map with ggplot
+#' Make a variogram map with ggplot
+#' @return plot
+#' @export
 ggvariogram_map = function(formula, sp_df, cutoff=NA, width=NA, threshold=NA){
   if(is.na(cutoff)){
     # assume cutoff is data range

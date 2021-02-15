@@ -184,6 +184,7 @@ ggplot() +
 
 writeRaster(dv_base, '../data/dv_base_masl.tif', overwrite=TRUE)
 ```
+
 Get DV Isopach
 
 ```{r}
@@ -198,5 +199,5 @@ ggplot() +
   geom_tile(data=dv_isopach_df, aes(x=x,y=y,fill=dv_isopach_m)) +
   geom_sf(data=study_dv_bounds, fill=NA, colour='yellow')
 
-writeRaster(dv_base, '../data/dv_iso_m.tif', overwrite=TRUE)
+writeRaster(dv_isopach, '../data/dv_iso_m.tif', overwrite=TRUE)
 ```

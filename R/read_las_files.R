@@ -1,11 +1,8 @@
-#' readFileIntoChar
+#' Read a file into an ASCII text file
 #' @description reads LAS into ascii string
 #' @param file_name File path to LAS
-#'
-#' @return
+#' @return char string
 #' @export
-#'
-#' @examples
 readFileIntoChar <- function(file_name){
   fi <- file.info(file_name)
   if (!is.na(fi$size) & (!fi$isdir)) {
