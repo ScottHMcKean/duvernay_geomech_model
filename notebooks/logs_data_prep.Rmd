@@ -115,7 +115,7 @@ comb_las_df %>%
   mutate(rel_depth_m = depth_m - min(depth_m))
 
 plot_ly(
-  comb_las_df %>% filter(uwi=='100101806419W500'), x = ~elev_masl, y = ~dtc_us_m, 
+  comb_las_df %>% filter(uwi=='103162506119W500'), x = ~elev_masl, y = ~dtc_us_m, 
   name = 'DTC', type = 'scatter', mode = 'lines', orientation='h') %>% 
   add_trace(y = ~gr_gapi, name = 'GR', mode = 'lines+markers')
 
