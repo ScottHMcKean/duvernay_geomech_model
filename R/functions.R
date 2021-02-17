@@ -1,6 +1,6 @@
 
 #' Make a model of vp ~ confining + deviatoric stress for mapping
-#' @param df
+#' @param df machine learning dataframe
 #' @return a linear model of vp
 #' @export
 fit_vp_model <- function(df){
@@ -8,7 +8,7 @@ fit_vp_model <- function(df){
 }
 
 #' Make a model of vs ~ confining + deviatoric stress for mapping
-#' @param df
+#' @param df machine learning dataframe
 #' @return a linear model of vs
 #' @export
 fit_vs_model <- function(df){
@@ -16,7 +16,7 @@ fit_vs_model <- function(df){
 }
 
 #' Root Mean Square Error of a model
-#' @param model
+#' @param model model output with a residuals column / vector
 #' @return scalar RMSE
 #' @export
 rmse <- function(model){
@@ -24,7 +24,6 @@ rmse <- function(model){
 }
 
 #' Calculate the bias and variance for a resample object on a regression
-#'
 #' @param resample resample object from mlr::resample, predict must be 'both'
 #' @return list of train/test bias and variance + resample object for rds stash
 #' @export
@@ -67,7 +66,6 @@ get_resample_regr_res = function(resample){
 }
 
 #' Make a partial dependence plot of all features
-#'
 #' @param i index for mapping
 #' @param predictor IML predictor
 #' @param feats feature vector (char vec)

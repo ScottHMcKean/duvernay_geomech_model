@@ -6,6 +6,9 @@
 \usage{
 rmse(model)
 }
+\arguments{
+\item{model}{model output with a residuals column / vector}
+}
 \value{
 scalar RMSE
 }

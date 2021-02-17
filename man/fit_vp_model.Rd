@@ -6,6 +6,9 @@
 \usage{
 fit_vp_model(df)
 }
+\arguments{
+\item{df}{machine learning dataframe}
+}
 \value{
 a linear model of vp
 }

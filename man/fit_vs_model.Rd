@@ -6,6 +6,9 @@
 \usage{
 fit_vs_model(df)
 }
+\arguments{
+\item{df}{machine learning dataframe}
+}
 \value{
 a linear model of vs
 }
