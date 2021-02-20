@@ -50,6 +50,7 @@ study_raster <- raster(
   resolution = 2500,
   crs = st_crs(study_bounds)$proj4string
   )
+study_raster[is.na(study_raster[])] <- 0 
 
 writeRaster(study_raster, '../data/study_raster.tif', overwrite=TRUE)
 ```

@@ -38,13 +38,19 @@ points because a) we aren't doing 3D kriging, and b) because geostatistics doesn
 work with zero distance variance that isn't equal to zero
 
 ```{r cars}
-sv_sf = st_read('../cache/sv_sf.GeoJSON') 
-pp_sf = st_read('../cache/pp_sf.GeoJSON') 
+study_raster = raster::raster('../data/study_raster.tif')
+sv_sf = st_read('../data/sv_sf.GeoJSON') %>%
+  drop_na()
+
+pp_sf = st_read('../data/pp_sf.GeoJSON') 
 pp_sf = pp_sf %>% 
-  aggregate(., by=pp_sf %>% distinct(), mean)
-shmin_sf = st_read('../cache/shmin_sf.GeoJSON') 
+  aggregate(., by=pp_sf %>% distinct(), mean) %>% 
+  drop_na()
+
+shmin_sf = st_read('../data/shmin_sf.GeoJSON') 
 shmin_sf = shmin_sf %>% 
-  aggregate(., by=shmin_sf %>% distinct(), mean)
+  aggregate(., by=shmin_sf %>% distinct(), mean) %>% 
+  drop_na()
 ```
 # Variography
 
@@ -251,73 +257,54 @@ gridded(st_grid) <- TRUE
 st_grid <- as(st_grid, "SpatialPixels")
 ```
 
-```{r}
-```
-
-```{r}
-vec = c(1,0.5,0.5,0,0,0)
-names(vec) = c('sv','sh', 'pp', 'sv-sh', 'sv-pp', 'sh-pp')
-
-mat = matrix(
-  c(vec['sv'], vec['sv-sh'], vec['sv-pp'], 
-    vec['sv-sh'], vec['sh'], vec['sh-pp'], 
-    vec['sv-pp'], vec['sh-pp'], vec['pp']),
-  nrow=3
-)
-
-posdef(mat)
-```
-```{r}
-
-```
-
-
 Try to see if we can fit an LMC using the eyeballed variograms
 
 ```{r}
 # secondary (SV)
-sv_vgm = vgm(0, "Sph", 50E3)
+sv_vgm = vgm(0, "Lin", 50E3)
 sv_vgm = vgm(0, "Lin", 10E3, add.to=sv_vgm)
-sv_vgm = vgm(0, "Sph", 1E3, add.to=sv_vgm)
+sv_vgm = vgm(0, "Lin", 5E3, add.to=sv_vgm)
 g = gstat(id='sv', formula=svgrad_norm~1, data=sv_sp, beta=0, nmax=50)
 g = gstat(g, id='sv', model=sv_vgm)
 
 # primary (SH)
-sh_vgm = vgm(0, "Sph", 50E3)
+sh_vgm = vgm(0, "Lin", 50E3)
 sh_vgm = vgm(0, "Lin", 10E3, add.to=sh_vgm)
-sh_vgm = vgm(0, "Sph", 1E3, add.to=sh_vgm)
+sh_vgm = vgm(0, "Lin", 5E3, add.to=sh_vgm)
 g = gstat(g, id='shmin', formula=shgrad_norm~1, data=sh_sp, beta=0, nmax=50)
 g = gstat(g, id='shmin', model=sh_vgm)
 
 # primary (PP)
-pp_vgm = vgm(0, "Sph", 50E3)
+pp_vgm = vgm(0, "Lin", 50E3)
 pp_vgm = vgm(0, "Lin", 10E3, add.to=pp_vgm)
-pp_vgm = vgm(0, "Sph", 1E3, add.to=pp_vgm)
+pp_vgm = vgm(0, "Lin", 5E3, add.to=pp_vgm)
 g = gstat(g, id='pp', formula = ppgrad_norm~1, data=pp_sp, beta=0, nmax=50)
 g = gstat(g, id='pp', model=pp_vgm)
 
 # covariance
-sv_sh_vgm = vgm(0, "Sph", 50E3)
-sv_sh_vgm = vgm(0, "Lin", 10E3, add.to = sv_sh_vgm)
-sv_sh_vgm = vgm(0, "Sph", 1E3, add.to=sv_sh_vgm)
+sv_sh_vgm = vgm(-0.5, "Lin", 50E3)
+sv_sh_vgm = vgm(-0.5, "Lin", 10E3, add.to = sv_sh_vgm)
+sv_sh_vgm = vgm(0, "Lin", 3E3, add.to=sv_sh_vgm)
 g = gstat(g, id=c('sv','shmin'), model=sv_sh_vgm, beta=0, nmax=50)
 
-sv_pp_vgm = vgm(0, "Sph", 50E3)
-sv_pp_vgm = vgm(0, "Lin", 10E3, add.to = sv_pp_vgm)
-sv_pp_vgm = vgm(0, "Sph", 1E3, add.to=sv_pp_vgm)
+sv_pp_vgm = vgm(-0.5, "Lin", 50E3)
+sv_pp_vgm = vgm(-0.5, "Lin", 10E3, add.to = sv_pp_vgm)
+sv_pp_vgm = vgm(0, "Lin", 3E3, add.to=sv_pp_vgm)
 g = gstat(g, id=c('sv','pp'), model=sv_pp_vgm, beta=0, nmax=50)
 
-sh_pp_vgm = vgm(0, "Sph", 50E3)
-sh_pp_vgm = vgm(0, "Lin", 10E3, add.to = sh_pp_vgm)
-sh_pp_vgm = vgm(0, "Sph", 1E3, add.to=sh_pp_vgm)
+sh_pp_vgm = vgm(-0.5, "Lin", 50E3)
+sh_pp_vgm = vgm(0.5, "Lin", 10E3, add.to = sh_pp_vgm)
+sh_pp_vgm = vgm(0, "Lin", 3E3, add.to=sh_pp_vgm)
 g = gstat(g, id=c('shmin','pp'), model=sh_pp_vgm, beta=0, nmax=50)
 
 v = variogram(g)
 
-g = fit.lmc(v,g, fit.ranges=FALSE, fit.lmc =TRUE, fit.sills=TRUE, fit.method=7)
+g = fit.lmc(v,g, fit.lmc =TRUE)
 
 plot(v,g)
 g
+
+edit(fit.lmc)
 ```
 
 Do conditional Gaussian cosimulation with three variables, a local neighbourhood of 50 points.

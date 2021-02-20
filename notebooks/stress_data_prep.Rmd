@@ -25,7 +25,6 @@ study_bounds = st_read('../data/study_bounds.GeoJSON')
 study_proj = st_crs(study_bounds)$proj4string
 study_raster = raster::raster('../data/study_raster.tif')
 study_dv_bounds = st_read('../data/study_dv_bounds.GeoJSON')
-
 ground_surface = raster::raster('../data/ground_elev_masl.tif')
 ```
 

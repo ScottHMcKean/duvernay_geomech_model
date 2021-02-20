@@ -39,6 +39,7 @@ points because a) we aren't doing 3D kriging, and b) because geostatistics doesn
 work with zero distance variance that isn't equal to zero
 
 ```{r cars}
+study_raster = raster('../data/study_raster.tif')
 sv_sf = st_read('../data/sv_sf.GeoJSON')
 logs_sf = st_read('../data/facies_data.GeoJSON')
 shale_sf = logs_sf %>% filter(facies == 'dv_shale')
@@ -86,32 +87,35 @@ moments::skewness(shale_sf$rhob_mean)
 moments::kurtosis(shale_sf$rhob_mean)
 
 # normal transform
-rhob_norm = bestNormalize::orderNorm(shale_sp$rhob_mean)
-shale_sf$rhob_norm = shale_sp$rhob_norm = rhob_norm$x.t
-ggdensity(shale_sf, x='rhob_norm') +
+rhob_norm = bestNormalize::orderNorm(shale_rhob$rhob_mean)
+shale_rhob$rhob_norm = rhob_norm$x.t
+ggdensity(as.data.frame(shale_rhob), x='rhob_norm') +
   stat_overlay_normal_density(color='red', linetype='dashed')
 moments::skewness(rhob_norm$x.t)
 moments::kurtosis(rhob_norm$x.t)
 
 # what is the global variance (should be 1...)
-var(shale_sp$rhob_norm)
+var(shale_rhob$rhob_norm)
 
 # make an experimental variogram
-rhob_v = variogram(rhob_norm~1, shale_sp)
-plot(rhob_v)
+shale_rhob_v = variogram(rhob_norm~1, shale_rhob)
+plot(shale_rhob_v)
 
 # check directional variograms
-rhob_v_dir = variogram(rhob_norm~1, shale_sp, alpha=c(0,22,45,67,90,112,135,157))
+rhob_v_dir = variogram(rhob_norm~1, shale_rhob, alpha=c(0,22,45,67,90,112,135,157))
 plot(rhob_v_dir)
 
 # check for geometric anisotropy
 ggvariogram_map(
   formula = rhob_norm~1, 
-  sp_df = shale_sp,
+  sp_df = shale_rhob,
   cutoff = 100E3, 
   width = 5E3,
   threshold = 1
   )
+
+shale_rhob_vgm = vgm(0.8, "Sph", 16E3, nugget = 0.2)
+plot(shale_rhob_v, shale_rhob_vgm)
 ```
 
 ## Descriptive Variography - RHOB / Carb
@@ -141,8 +145,8 @@ moments::kurtosis(rhob_norm$x.t)
 var(carb_sp$rhob_norm)
 
 # make an experimental variogram
-rhob_v = variogram(rhob_norm~1, carb_sp)
-plot(rhob_v)
+carb_rhob_v = variogram(rhob_norm~1, carb_sp)
+plot(carb_rhob_v)
 
 # check directional variograms
 rhob_v_dir = variogram(rhob_norm~1, carb_sp, alpha=c(0,22,45,67,90,112,135,157))
@@ -156,79 +160,206 @@ ggvariogram_map(
   width = 5E3,
   threshold = 1
   )
+
+carb_rhob_vgm = vgm(0.4, "Sph", 16E3, nugget = 0.6)
+plot(carb_rhob_v, carb_rhob_vgm)
 ```
+## Descriptive Variography - DTC / Shale
 
-## Variogram Modelling - SV
-
-A uninformative variogram here might be best solution. We use a spherical variogram with a short range (10 km) to fit our first observation. We need a model, so this is a pretty broad assumption. The other alternative is full nugget, but that simply imparts random noise and isn't all that useful for cosimulation.
+- Density actually has a relatively well behaved variogram
+- No anisotropy noted
+- Good coverage
+- Nothing of note in variogram map
 
 ```{r}
-pp_v = variogram(ppgrad_norm~1, pp_sp, alpha=c(67,157))
-
-pp_vgm = vgm(0.1, "Sph", 50E3, nugget = 0.1)
-pp_vgm = vgm(0.85, "Sph", 15E3, anis=c(67, 0.75), add.to=pp_vgm)
-plot(pp_v, pp_vgm)
-
-pp_vgm
-```
-## Descriptive Variography - Minimum Horizontal Stress
-
-- Actually, shmin isn't horribly non-normal (surprisingly), with nearly no skewness (-0.10) and light tails (k=2.07). But once again (as with pp), the variogram looks 
-like garbage and the data is very sparse.
-
-```{r}
-sh_sp = as_Spatial(shmin_sf)
+shale_dtc = shale_sp[!is.na(shale_sp$dtc_mean),]
 # investigate normality
 
 # make anisotropic variograms
-ggdensity(shmin_sf, x='shmingrad_kpa_m') +
+ggdensity(shale_sf, x='dtc_mean') +
   stat_overlay_normal_density(color='red', linetype='dashed')
-moments::skewness(shmin_sf$shmingrad_kpa_m)
-moments::kurtosis(shmin_sf$shmingrad_kpa_m)
+moments::skewness(shale_dtc$dtc_mean)
+moments::kurtosis(shale_dtc$dtc_mean)
 
 # normal transform
-sh_norm = bestNormalize::orderNorm(shmin_sf$shmingrad_kpa_m)
-shmin_sf$shgrad_norm = sh_sp$shgrad_norm = sh_norm$x.t
-ggdensity(shmin_sf, x='shgrad_norm') +
+dtc_norm = bestNormalize::orderNorm(shale_dtc$dtc_mean)
+shale_dtc$dtc_norm = dtc_norm$x.t
+ggdensity(as.data.frame(shale_dtc), x='dtc_norm') +
   stat_overlay_normal_density(color='red', linetype='dashed')
-moments::skewness(sh_norm$x.t)
-moments::kurtosis(sh_norm$x.t)
+moments::skewness(rhob_norm$x.t)
+moments::kurtosis(rhob_norm$x.t)
 
 # what is the global variance (should be 1...)
-var(sh_sp$shgrad_norm)
+var(shale_dtc$dtc_norm)
 
 # make an experimental variogram
-sh_v = variogram(shgrad_norm~1, sh_sp)
-plot(sh_v)
+shale_dtc_v = variogram(dtc_norm~1, shale_dtc)
+plot(shale_dtc_v)
 
 # check directional variograms
-sh_v_dir = variogram(shgrad_norm~1, sh_sp, alpha=c(0,22,45,67,90,112,135,157))
-plot(sh_v_dir)
+shale_dtc_v_dir = variogram(dtc_norm~1, shale_dtc, alpha=c(0,22,45,67,90,112,135,157))
+plot(shale_dtc_v_dir)
 
 # check for geometric anisotropy
 ggvariogram_map(
-  formula = shgrad_norm~1, 
-  sp_df = sh_sp,
+  formula = dtc_norm~1, 
+  sp_df = shale_dtc,
   cutoff = 100E3, 
   width = 5E3,
   threshold = 1
   )
+
+shale_dtc_vgm = vgm(0.6, "Sph", 40E3, nugget = 0.4)
+plot(shale_dtc_v, shale_dtc_vgm)
 ```
 
-## Variogram Modelling - SV
+## Descriptive Variography - DTC / Carb
 
-We apply the same variogram as pore pressure
+- The carbonate DTC appears shorter range than shale
+- Some anisotropy is noted, but nothing enough to be significant or justify
+the use of anisotropic variograms
+- The range of 16 km from Carb/Rhob matches really nicely with the DTC.
 
 ```{r}
-sh_v = variogram(shgrad_norm~1, sh_sp, alpha=c(67,157))
+carb_dtc = carb_sp[!is.na(carb_sp$dtc_mean),]
+# investigate normality
 
-sh_vgm = vgm(0.5, "Sph", 50E3, nugget = 0.1)
-sh_vgm = vgm(0.5, "Sph", 15E3, anis=c(157, 0.5), add.to=sh_vgm)
-plot(sh_v, sh_vgm)
-sh_vgm
+# make anisotropic variograms
+ggdensity(carb_sf, x='dtc_mean') +
+  stat_overlay_normal_density(color='red', linetype='dashed')
+moments::skewness(carb_dtc$dtc_mean)
+moments::kurtosis(carb_dtc$dtc_mean)
+
+# normal transform
+dtc_norm = bestNormalize::orderNorm(carb_dtc$dtc_mean)
+carb_dtc$dtc_norm = dtc_norm$x.t
+ggdensity(as.data.frame(carb_dtc), x='dtc_norm') +
+  stat_overlay_normal_density(color='red', linetype='dashed')
+moments::skewness(dtc_norm$x.t)
+moments::kurtosis(dtc_norm$x.t)
+
+# what is the global variance (should be 1...)
+var(carb_dtc$dtc_norm)
+
+# make an experimental variogram
+carb_dtc_v = variogram(dtc_norm~1, carb_dtc)
+plot(carb_dtc_v)
+
+# check directional variograms
+dtc_v_dir = variogram(dtc_norm~1, carb_dtc, alpha=c(0,22,45,67,90,112,135,157))
+plot(dtc_v_dir)
+
+# check for geometric anisotropy
+ggvariogram_map(
+  formula = dtc_norm~1, 
+  sp_df = carb_dtc,
+  cutoff = 100E3, 
+  width = 5E3,
+  threshold = 1
+  )
+
+carb_dtc_vgm = vgm(0.65, "Sph", 16E3, nugget = 0.35)
+plot(carb_dtc_v, carb_dtc_vgm)
 ```
 
+## Descriptive Variography - DTS / Shale
 
+- DTS shale is pretty damn normal
+- We only have 24 observations here... low numbers, result in some strange
+variograms
+- We use the same scale as used on the DTC shale (40km), with a decent nugget
+
+```{r}
+shale_dts = shale_sp[!is.na(shale_sp$dts_mean),]
+# investigate normality
+
+# make anisotropic variograms
+ggdensity(shale_sf, x='dts_mean') +
+  stat_overlay_normal_density(color='red', linetype='dashed')
+moments::skewness(shale_dts$dts_mean)
+moments::kurtosis(shale_dts$dts_mean)
+
+# normal transform
+dts_norm = bestNormalize::orderNorm(shale_dts$dts_mean)
+shale_dts$dts_norm = dts_norm$x.t
+ggdensity(as.data.frame(shale_dts), x='dts_norm') +
+  stat_overlay_normal_density(color='red', linetype='dashed')
+moments::skewness(rhob_norm$x.t)
+moments::kurtosis(rhob_norm$x.t)
+
+# what is the global variance (should be 1...)
+var(shale_dts$dts_norm)
+
+# make an experimental variogram
+shale_dts_v = variogram(dts_norm~1, shale_dts)
+plot(shale_dts_v)
+
+# check directional variograms
+shale_dts_v_dir = variogram(dts_norm~1, shale_dts, alpha=c(0,22,45,67,90,112,135,157))
+plot(shale_dts_v_dir)
+
+# check for geometric anisotropy
+ggvariogram_map(
+  formula = dts_norm~1, 
+  sp_df = shale_dts,
+  cutoff = 100E3, 
+  width = 5E3,
+  threshold = 1
+  )
+
+shale_dts_vgm = vgm(0.75, "Sph", 40E3, nugget = 0.25)
+plot(shale_dts_v, shale_dts_vgm)
+```
+
+## Descriptive Variography - dts / Carb
+
+- Carbonate DTS is skewed towards the lower end of the scale
+- We only have 17 observations...
+- Once again, we see a smaller range (16 km should do fine)
+- With very limited information, we start with the same variogram as we
+use for DTC/Carb.
+
+```{r}
+carb_dts = carb_sp[!is.na(carb_sp$dts_mean),]
+# investigate normality
+
+# make anisotropic variograms
+ggdensity(carb_sf, x='dts_mean') +
+  stat_overlay_normal_density(color='red', linetype='dashed')
+moments::skewness(carb_dts$dts_mean)
+moments::kurtosis(carb_dts$dts_mean)
+
+# normal transform
+dts_norm = bestNormalize::orderNorm(carb_dts$dts_mean)
+carb_dts$dts_norm = dts_norm$x.t
+ggdensity(as.data.frame(carb_dts), x='dts_norm') +
+  stat_overlay_normal_density(color='red', linetype='dashed')
+moments::skewness(dts_norm$x.t)
+moments::kurtosis(dts_norm$x.t)
+
+# what is the global variance (should be 1...)
+var(carb_dts$dts_norm)
+
+# make an experimental variogram
+carb_dts_v = variogram(dts_norm~1, carb_dts)
+plot(carb_dts_v)
+
+# check directional variograms
+dts_v_dir = variogram(dts_norm~1, carb_dts, alpha=c(0,22,45,67,90,112,135,157))
+plot(dts_v_dir)
+
+# check for geometric anisotropy
+ggvariogram_map(
+  formula = dts_norm~1, 
+  sp_df = carb_dts,
+  cutoff = 100E3, 
+  width = 5E3,
+  threshold = 1
+  )
+
+carb_dts_vgm = vgm(0.65, "Sph", 16E3, nugget = 0.35)
+plot(carb_dts_v, carb_dts_vgm)
+```
 ## Cosimulation 
 
 We are going to cosimulate stress values using a Linear Model of Coregionalization (LMC)
@@ -246,70 +377,47 @@ gridded(st_grid) <- TRUE
 st_grid <- as(st_grid, "SpatialPixels")
 ```
 
-```{r}
-```
+For the logs we have
 
-```{r}
-vec = c(1,0.5,0.5,0,0,0)
-names(vec) = c('sv','sh', 'pp', 'sv-sh', 'sv-pp', 'sh-pp')
+SV, RHOB, DTC, DTS
+SV is exhaustive and the same for both carbonate and shale (the exhaustive link raster)
+RHOB, DTC, DTS are simulated separately for carbonate and shale
 
-mat = matrix(
-  c(vec['sv'], vec['sv-sh'], vec['sv-pp'], 
-    vec['sv-sh'], vec['sh'], vec['sh-pp'], 
-    vec['sv-pp'], vec['sh-pp'], vec['pp']),
-  nrow=3
-)
-
-posdef(mat)
-```
-```{r}
-
-```
-
-
-Try to see if we can fit an LMC using the eyeballed variograms
-
+Shale first 
 ```{r}
 # secondary (SV)
-sv_vgm = vgm(0, "Sph", 50E3)
-sv_vgm = vgm(0, "Lin", 10E3, add.to=sv_vgm)
-sv_vgm = vgm(0, "Sph", 1E3, add.to=sv_vgm)
+sv_vgm = vgm(0.3, "Sph", 50E3, 0.2)
+sv_vgm = vgm(0.5, "Lin", 10E3, add.to=sv_vgm)
 g = gstat(id='sv', formula=svgrad_norm~1, data=sv_sp, beta=0, nmax=50)
 g = gstat(g, id='sv', model=sv_vgm)
 
-# primary (SH)
-sh_vgm = vgm(0, "Sph", 50E3)
-sh_vgm = vgm(0, "Lin", 10E3, add.to=sh_vgm)
-sh_vgm = vgm(0, "Sph", 1E3, add.to=sh_vgm)
-g = gstat(g, id='shmin', formula=shgrad_norm~1, data=sh_sp, beta=0, nmax=50)
-g = gstat(g, id='shmin', model=sh_vgm)
+rhob_vgm = vgm(0.3, "Sph", 50E3, 0.2)
+rhob_vgm = vgm(0.5, "Lin", 10E3, add.to=rhob_vgm)
+g = gstat(g, id='rhob', formula=rhob_norm~1, data=shale_rhob, beta=0, nmax=50)
+g = gstat(g, id='rhob', model=rhob_vgm)
 
-# primary (PP)
-pp_vgm = vgm(0, "Sph", 50E3)
-pp_vgm = vgm(0, "Lin", 10E3, add.to=pp_vgm)
-pp_vgm = vgm(0, "Sph", 1E3, add.to=pp_vgm)
-g = gstat(g, id='pp', formula = ppgrad_norm~1, data=pp_sp, beta=0, nmax=50)
-g = gstat(g, id='pp', model=pp_vgm)
+dtc_vgm = vgm(0.5, "Sph", 50E3, 0.2)
+dtc_vgm = vgm(0.5, "Lin", 10E3, add.to=dtc_vgm)
+g = gstat(g, id='dtc', formula = dtc_norm~1, data=shale_dtc, beta=0, nmax=50)
+g = gstat(g, id='dtc', model=dtc_vgm)
 
-# covariance
-sv_sh_vgm = vgm(0, "Sph", 50E3)
-sv_sh_vgm = vgm(0, "Lin", 10E3, add.to = sv_sh_vgm)
-sv_sh_vgm = vgm(0, "Sph", 1E3, add.to=sv_sh_vgm)
-g = gstat(g, id=c('sv','shmin'), model=sv_sh_vgm, beta=0, nmax=50)
+dts_vgm = vgm(0.5, "Sph", 50E3, 0.2)
+dts_vgm = vgm(0.5, "Lin", 10E3, add.to=dts_vgm)
+g = gstat(g, id='dts', formula = dts_norm~1, data=shale_dts, beta=0, nmax=50)
+g = gstat(g, id='dts', model=dts_vgm)
 
-sv_pp_vgm = vgm(0, "Sph", 50E3)
-sv_pp_vgm = vgm(0, "Lin", 10E3, add.to = sv_pp_vgm)
-sv_pp_vgm = vgm(0, "Sph", 1E3, add.to=sv_pp_vgm)
-g = gstat(g, id=c('sv','pp'), model=sv_pp_vgm, beta=0, nmax=50)
-
-sh_pp_vgm = vgm(0, "Sph", 50E3)
-sh_pp_vgm = vgm(0, "Lin", 10E3, add.to = sh_pp_vgm)
-sh_pp_vgm = vgm(0, "Sph", 1E3, add.to=sh_pp_vgm)
-g = gstat(g, id=c('shmin','pp'), model=sh_pp_vgm, beta=0, nmax=50)
+cross_vgm = vgm(0.5, "Sph", 50E3, 0.2)
+cross_vgm = vgm(0.5, "Lin", 10E3, add.to=cross_vgm)
+g = gstat(g, id=c('sv','rhob'), model=cross_vgm, beta=0, nmax=50)
+g = gstat(g, id=c('sv','dtc'), model=cross_vgm, beta=0, nmax=50)
+g = gstat(g, id=c('sv','dts'), model=cross_vgm, beta=0, nmax=50)
+g = gstat(g, id=c('rhob','dtc'), model=cross_vgm, beta=0, nmax=50)
+g = gstat(g, id=c('rhob','dts'), model=cross_vgm, beta=0, nmax=50)
+g = gstat(g, id=c('dtc','dts'), model=cross_vgm, beta=0, nmax=50)
 
 v = variogram(g)
 
-g = fit.lmc(v,g, fit.ranges=FALSE, fit.lmc =TRUE, fit.sills=TRUE, fit.method=7)
+g = fit.lmc(v,g, fit.lmc =TRUE, fit.method=1)
 
 plot(v,g)
 g
