@@ -83,7 +83,10 @@ subset using the AER 3D model (duvernay top and base).
 study_las_file_paths = las_file_paths[las_file_uwis %in% tops$uwi]
 ```
 
-```{r}
+This function retrieves all the log data and take quite a while. Don't run it..
+We instead load the las_df from file (but can't provide this data sorry)
+
+```{r, eval=FALSE}
 las_dfs <- map(.x = study_las_file_paths, get_log_data, study_locs, dv_base, dv_top)
 
 log_names <- map(.x = las_dfs, .f = colnames) %>%
@@ -98,10 +101,14 @@ comb_las_df <- bind_rows(las_dfs) %>%
 colnames(comb_las_df) <- colnames(comb_las_df) %>% str_replace(., '_qcgeo', '')
 
 comb_las_df %>% fwrite(., '../data-raw/logs_df.csv')
+```
+
+```{r}
+comb_las_df <- fread('../data-raw/logs_df.csv')
 
 log_summary = comb_las_df %>%
   group_by(uwi) %>%
-  summarise(rows = n(), 
+  dplyr::summarise(rows = n(), 
             rhob = sum(na.omit(rhob_k_m) > 0),
             dtc = sum(na.omit(dtc_us_m) > 0),
             dts = sum(na.omit(dts_us_m) > 0),
@@ -109,14 +116,48 @@ log_summary = comb_las_df %>%
             )
 ```
 
-```{r}
-comb_las_df %>%
-  group_by(uwi) %>%
-  mutate(rel_depth_m = depth_m - min(depth_m))
+Manually ID the Duvernay Carbonate so we can get the Upper Duvernay and Duvernay
+Carbonate for geostatistical simulation. Log these picks in data/dv_b_tops.csv
 
+```{r}
 plot_ly(
-  comb_las_df %>% filter(uwi=='103162506119W500'), x = ~elev_masl, y = ~dtc_us_m, 
+  comb_las_df %>% filter(uwi=="100010506418W500"), x = ~elev_masl, y = ~dtc_us_m, 
   name = 'DTC', type = 'scatter', mode = 'lines', orientation='h') %>% 
   add_trace(y = ~gr_gapi, name = 'GR', mode = 'lines+markers')
+```
 
+Read in the top picks and intersect the logs with each top and bottom for further
+isolation and flattening across the study area.N ow aggregation of the logs 
+into 2D summaries is straightforward.
+
+```{r}
+dv_carb_tops = read_csv('../data/dv_carb_picks.csv')
+
+facies = map_df(
+    unique(dv_carb_tops$uwi), 
+    classify_log_intervals, comb_las_df, dv_carb_tops) %>%
+  filter(facies != 'na') %>%
+  group_by(uwi, facies) %>%
+  summarise(
+    mean_elev_masl = mean(elev_masl),
+    rows = n(), 
+    thickness = max(rel_depth_m) - min(rel_depth_m),
+    rhob_mean = mean(rhob_k_m, na.rm=TRUE),
+    rhob_sd = sd(rhob_k_m, na.rm=TRUE),
+    dtc_mean= mean(dtc_us_m, na.rm=TRUE),
+    dtc_sd = sd(dtc_us_m, na.rm=TRUE),
+    dts_mean = mean(dts_us_m, na.rm=TRUE),
+    dts_sd = sd(dts_us_m, na.rm=TRUE),
+    gr_mean = mean(gr_gapi, na.rm=TRUE),
+    gr_sd = sd(gr_gapi, na.rm=TRUE))
+
+facies %>% write_csv('../data/facies_values.csv')
+```
+
+In addition to saving the raw log values, we also want a geometry-aware
+file so we can load the data plus the locations. So we take the simplified study
+locations and merge with the facies summary, writing as as GeoJSON.
+
+```{r}
+facies %>% merge(study_locs, by ='uwi') %>% st_write('../data/facies_data.GeoJSON')
 ```

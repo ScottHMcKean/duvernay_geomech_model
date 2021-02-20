@@ -142,3 +142,35 @@ get_subset_log_data <- function(filepath, study_locs, dv_base, dv_top){
     filter(elev_masl > base & elev_masl < top) %>%
     janitor::clean_names()
 }
+
+#' Mappable function to subset logs into shale and carbonate based on tops
+#' works on elev_masl (what the tops are picked in)
+#' @param this_uwi the uwi for subsetting and facies classification
+#' @param comb_las_df the entire combined las df
+#' @param dv_carb_tops the tops of the Duvernay (has start and end of carbonate)
+#' @return a dataframe of a single well, to be combined using purrr::map_df
+#' @export
+classify_log_intervals = function(this_uwi, comb_las_df, dv_carb_tops){
+  carb_top = dv_carb_tops %>% filter(uwi == this_uwi) %>% pull(dv_b_start) *-1
+  if (is.na(carb_top)){
+    carb_top = comb_las_df %>%
+      filter(uwi == this_uwi) %>%
+      pull(elev_masl) %>%
+      min() - 0.1
+  }
+  carb_bot = dv_carb_tops %>% filter(uwi == this_uwi) %>% pull(dv_b_end) *-1
+  if (is.na(carb_bot)){
+    carb_bot = comb_las_df %>%
+      filter(uwi == this_uwi) %>%
+      pull(elev_masl) %>%
+      min() - 0.1
+  }
+
+  out_las_df = comb_las_df %>%
+    filter(uwi == this_uwi) %>%
+    mutate(facies = case_when(
+      elev_masl > carb_top ~ 'dv_shale',
+      elev_masl <= carb_top & elev_masl >= carb_bot ~ 'dv_carb',
+      TRUE ~ 'na'
+    ))
+}
