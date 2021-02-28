@@ -1,0 +1,360 @@
+---
+title: "lmc_mcmc"
+author: "Scott McKean"
+date: "22/02/2021"
+output: html_document
+---
+
+Port of Emery's SA algorithm for LMC fitting
+
+```{r setup, include=FALSE}
+library(tidyverse)
+```
+
+## Functions
+
+```{r}
+# Compute covariance for reduced distance h
+cova <- function(type, h, b){
+  epsilon = 1e-12
+  if (type < 0){
+    # Constant value
+    return(0*h+1)
+  } else if (type < 1){
+    # Nugget
+    return(as.integer(h<epsilon))
+  } else if (type < 2){
+    # Spherical model
+    return(
+      1 
+      - 1.5*ifelse(h>1,1,h) 
+      + 0.5*ifelse(h^3>1,1,h^3)
+      )
+  } else if (type < 3){
+    # Exponential
+    return(exp(-h))
+  } else if (type<7){
+    # Gaussian model
+    return(exp(-h^2))
+  } else if (type<14){
+    # Linear Model
+    return(-h)
+  } else {
+    stop('Unavailable covariance model')
+  }
+}
+```
+
+```{r}
+# setup rotation matrix
+setrot <- function(model, it){
+  deg2rad = pi/180
+  ranges = model[it,2:4]
+  angles = model[it,5:7]
+  
+  # matrix of coordinate reduction
+  redmat = matrix(0,nrow=3,ncol=3)
+  diag(redmat) = (1./(eps+ranges))
+  
+  a = (90-angles[1])*deg2rad
+  b = -angles[2]*deg2rad
+  c = angles[3]*deg2rad
+
+  cosa = cos(a)
+  sina = sin(a)
+  cosb = cos(b)
+  sinb = sin(b)
+  cosc = cos(c)
+  sinc = sin(c)
+  
+  rotmat = matrix(0,nrow=3,ncol=3)
+  rotmat[1,1] = cosb * cosa
+  rotmat[1,2] = cosb * sina
+  rotmat[1,3] = -sinb
+  rotmat[2,1] = -cosc*sina + sinc*sinb*cosa
+  rotmat[2,2] = cosc*cosa + sinc*sinb*sina
+  rotmat[2,3] =  sinc * cosb
+  rotmat[3,1] = sinc*sina + cosc*sinb*cosa
+  rotmat[3,2] = -sinc*cosa + cosc*sinb*sina
+  rotmat[3,3] = cosc * cosb
+
+  solve(rotmat)%*%redmat
+}
+```
+
+## Basics
+
+Instructions minus GAM
+We only use traditional variograms (gstat)
+
+```{r cars}
+azimuth = rep(c(0,0),6)
+dip = rep(c(0,90),6)
+nlag = rep(c(20, 20), 6)
+tail = c(1,1,1,1,1,1,2,2,2,2,3,3) 
+head = c(1,1,2,2,3,3,2,2,3,3,3,3)
+s1 = c(0,1,1,1,0,0,0,1)
+s2 = c(2,3,3,6.7,0,0,0,1)
+s3 = c(2,10,10,26.7,0,0,0,1)
+s4 = c(1,80,80,1E8,0,0,0,1)
+model = rbind(s1,s2,s3,s4)
+weight=1
+display=TRUE
+vartype =1
+```
+
+## Load GAM
+
+
+## Hyperparameters
+```{r}
+#maximum number of consecutive iterations with no accepted transitions
+maxiterations = 5e3
+# maximum processing time in seconds
+tmax = 100
+# probability of accepting a non-favorable transition at iteration 0
+p0 = 0.9
+# probability of accepting a non-favorable transition at iteration 2000
+p2000 = 0.1 
+# correlation between generated Gaussian vectors
+r = 0.9
+# eps (machine accuracy)
+eps = 1E-12
+```
+
+## Define Other Parameters
+
+```{r}
+azm = pi/180*azimuth
+dip = pi/180*dip
+#directing vector
+u = matrix(c(sin(azm)*cos(dip), 
+    cos(azm)*cos(dip),  
+    sin(dip)), 
+    ncol=3)
+
+nvariog = length(azm)
+
+nlag = c(0,cumsum(nlag))
+n = nlag[nvariog+1]
+nfield = max(tail,head)
+nst = dim(model)[1]
+if (dim(model)[1]<8){model[,8] = 1}
+if (max(model[,1])>11){stop('Error in model type')}
+
+cc = matrix(0, nrow=nst, ncol=nfield^2)
+```
+
+## Make Variogram
+
+```{r}
+gam = read_csv('/home/smckean/Desktop/emery_lmc/ex_var.csv', col_names =c('lag_dist','npairs', 'variance'))
+
+# remove zero distances
+is_zero_dist = (abs(gam[,1])<eps) & (abs(gam[,3])<eps)
+gam = gam[!is_zero_dist,]
+  
+# define weights for optimization
+if (weight == 0){
+  weights = gam[,2]*0+1
+} else if (weight == 1){
+  weights = gam[,2]
+} else if (weight == 2){
+  weights = 1/(1e-10+gam[,1])
+} else {
+  weights = gam[,2]/(1e-10+gam[,1])
+}
+weights = weights/sum(weights)
+```
+## Calculate basic structures
+
+```{r}
+for (l in 1:nvariog){
+  lag = gam[(nlag[l]+1):nlag[l+1],1]$lag
+  lag_mat = matrix(c(lag,lag,lag), ncol=3)
+  dim(lag_mat)
+  u_mat = matrix(
+    rep(u[l,], dim(lag_mat)[1])
+    ,ncol=3, byrow=TRUE
+    )
+  h_mat = lag_mat * u_mat
+  if (l == 1){
+    h = h_mat
+  } else {
+    h = rbind(h, h_mat)
+  }
+}
+
+g=matrix(0, nrow=dim(h)[1], ncol=nst)
+for (i in 1:nst){
+  R = setrot(model,i)
+  ha = h %*% t(R)
+  ha = sqrt(colSums(t(ha)^2))
+  C = cova(model[i,1],ha,model[i,8])
+  g[,i] = C
+}
+
+if (vartype == 1){
+  var = rep(1,n)*g[1,]-rbind(g[2:n,],rep(0,nst))
+} else {
+  var = g[2:n+1,]
+}
+```
+
+```{r}
+# Initialization
+A = cbind(
+  diag(3), 
+  matrix(0, nrow=nfield,ncol=(nst-1)*nfield)
+  )
+
+for (i in 1:nst){
+  A_p = A[,((i-1)*nfield+1):(i*nfield)]
+  B = A_p * t(A_p)
+  if (i==1){
+    C = as.vector(B)
+  } else {
+    C = rbind(C, as.vector(B))
+  }
+}
+v0 = A
+gamma = var %*% C
+WSS = 0
+for (l in 1:nvariog){
+  this_gam = gamma[(nlag[l]+1):(nlag[l+1]),]
+  gammail = array(
+    c(this_gam[,1:3],
+      this_gam[,4:6],
+      this_gam[,7:9]),
+    dim = c(nlag[l+1]-nlag[l],nfield,nfield))
+  gammail = gammail[,tail[l],head[l]]
+  WS_vec = (
+    + t(weights[(nlag[l]+1):nlag[l+1],])
+    * (gam[(nlag[l]+1):nlag[l+1],3]-gammail)^2
+    )
+  WSS = WSS + sum(WS_vec)
+}
+t0 = -WSS/log(p0)
+alpha = exp(log(-WSS/t0/log(p2000))/2000)
+```
+
+## Iteration
+
+```{r}
+t_start = Sys.time()
+t = 0
+number = 0
+nit = 0 
+while (number<maxiterations & t<tmax){
+  nit = nit +1
+  temperature = t0*alpha^(nit-1) 
+  j = ceiling(nfield*runif(1))
+  ccprime = cc
+  Aprime = A
+  ## Stopped here
+  v = r*v0[j,] + sqrt(1-r*r)*rnorm(nst*nfield)
+  Aprime[j,] = v/sqrt(sum(v^2))
+  for (i in 1:nst){
+    B = (Aprime[,((i-1)*nfield+1):(i*nfield)]
+         *t(Aprime[,((i-1)*nfield+1):(i*nfield)])
+         )
+    ccprime[i,] = t(B)
+  }
+  gammaprime = g %*% ccprime
+  WSSprime = 0
+  for (l in 1:nvariog){
+    this_gam = gammaprime[(nlag[l]+1):(nlag[l+1]),]
+    gammail = array(
+      c(this_gam[,1:3],
+        this_gam[,4:6],
+        this_gam[,7:9]),
+      dim = c(nlag[l+1]-nlag[l],nfield,nfield))
+    gammail = gammail[,tail[l],head[l]]
+    WS_vec = (
+      + t(weights[(nlag[l]+1):nlag[l+1],])
+      * (gam[(nlag[l]+1):nlag[l+1],3]-gammail)^2
+      )
+    WSSprime = WSSprime + sum(WS_vec)
+  }
+  accept = (runif(1) < exp((WSS-WSSprime)/temperature))
+  if (accept == TRUE){
+    A = Aprime
+    cc = ccprime
+    WSS = WSSprime
+    number = 0
+    v0[j,] = v
+  } else {
+    number = number+1
+  }
+  t = Sys.time()-t_start
+}
+```
+
+# Make plots
+
+```{r}
+neg = 0
+for (l in 1:nvariog){
+  hmax = max(gam[(nlag[l]+1):nlag[l+1],1])
+  if(l == 1){
+    h = 0:200*hmax/200 * u[l,]
+  } else {
+    h = 
+  }
+}
+    
+    h = [h;[0:200]'*hmax/200*u(l,:)];
+  end
+  g = zeros(201*nvariog,nst);
+  for i = 1:nst
+    R = setrot(model,i);
+    ha = h*R';
+    ha = sqrt(sum(ha'.^2))';
+    C = cova(model(i,1),ha,model(i,8))+0;
+    g(:,i) = C;
+  end
+  if vartype==1,
+    g = ones(size(g,1),1)*g(1,:) - g(1:size(g,1),:);
+  end
+  gamma = g*cc;  
+  h = sqrt(sum(h.^2,2));
+  colors = [];
+  symbol = [];
+  while(size(colors,1)<nvariog), colors = [colors;['k';'b';'g';'r';'c';'m';'y']]; end
+  while(size(symbol,1)<nvariog), symbol = [symbol;['x';'+';'*';'o';'s';'d';'v';'^';'<';'>';'p';'h']]; end
+  figure(max(1,round(display)));
+  clf;
+  set(gcf,'DefaultAxesFontName','Times','DefaultAxesFontSize',6)
+  count = zeros(nfield,nfield);
+  hmin = zeros(nfield,nfield);
+  hmax = zeros(nfield,nfield);
+  if min(gam(:,1))<0, neg = 1; end
+  for l = 1:nvariog
+    i = tail(l);
+    j = head(l);
+    count(i,j) = count(i,j)+1;
+    k = (j-1)*nfield+i;
+    subplot(nfield,nfield,k);
+    set(gcf,'DefaultAxesFontName','Times','DefaultAxesFontSize',6)
+    hold on;
+    plot(gam(nlag(l)+1:nlag(l+1),1),gam(nlag(l)+1:nlag(l+1),3),[colors(count(i,j),:) symbol(count(i,j),:)]);
+    if vartype==1
+      plot(h((l-1)*201+2:l*201),gamma((l-1)*201+2:l*201,k),[colors(count(i,j),:) '-'],'LineWidth',1);
+    else
+      plot(h((l-1)*201+1:l*201),gamma((l-1)*201+1:l*201,k),[colors(count(i,j),:) '-'],'LineWidth',1);
+    end
+    if neg==1
+      if vartype==1
+        plot(-h((l-1)*201+2:l*201),gamma((l-1)*201+2:l*201,k),[colors(count(i,j),:) '-'],'LineWidth',1);
+      else
+        plot(-h((l-1)*201+1:l*201),gamma((l-1)*201+1:l*201,k),[colors(count(i,j),:) '-'],'LineWidth',1);
+      end
+    end    
+    hmin(i,j) = min(hmin(i,j),min(gam(nlag(l)+1:nlag(l+1),1)));
+    hmax(i,j) = max(hmax(i,j),max([h(l*201);gam(nlag(l)+1:nlag(l+1),1)]));
+    a = axis;
+    if a(3)>0, a(3)=0; end
+    if a(4)<0, a(4)=0; end
+    axis([hmin(i,j) hmax(i,j) a(3) a(4)]);
+  end
+```
