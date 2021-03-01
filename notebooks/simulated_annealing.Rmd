@@ -170,7 +170,7 @@ weights = weights/sum(weights)
 
 ```{r}
 for (l in 1:nvariog){
-  lag = gam[(nlag[l]+1):nlag[l+1],1]$lag
+  lag = gam[(nlag[l]+1):nlag[l+1],1]$lag_dist
   lag_mat = matrix(c(lag,lag,lag), ncol=3)
   dim(lag_mat)
   u_mat = matrix(
@@ -179,7 +179,7 @@ for (l in 1:nvariog){
     )
   h_mat = lag_mat * u_mat
   if (l == 1){
-    h = h_mat
+    h = rbind(c(0,0,0),h_mat)
   } else {
     h = rbind(h, h_mat)
   }
@@ -195,9 +195,9 @@ for (i in 1:nst){
 }
 
 if (vartype == 1){
-  var = rep(1,n)*g[1,]-rbind(g[2:n,],rep(0,nst))
+  g = matrix(1, nrow=dim(h)[1]-1, ncol=nst)-g[2:(n+1),]
 } else {
-  var = g[2:n+1,]
+  g = g[2:n+1,]
 }
 ```
 
@@ -212,13 +212,14 @@ for (i in 1:nst){
   A_p = A[,((i-1)*nfield+1):(i*nfield)]
   B = A_p * t(A_p)
   if (i==1){
-    C = as.vector(B)
+    cc = as.vector(B)
   } else {
-    C = rbind(C, as.vector(B))
+    cc = rbind(cc, as.vector(B))
   }
 }
+
 v0 = A
-gamma = var %*% C
+gamma = g %*% cc
 WSS = 0
 for (l in 1:nvariog){
   this_gam = gamma[(nlag[l]+1):(nlag[l+1]),]
@@ -246,17 +247,17 @@ t = 0
 number = 0
 nit = 0 
 while (number<maxiterations & t<tmax){
+  print(WSS)
   nit = nit +1
   temperature = t0*alpha^(nit-1) 
   j = ceiling(nfield*runif(1))
   ccprime = cc
   Aprime = A
-  ## Stopped here
   v = r*v0[j,] + sqrt(1-r*r)*rnorm(nst*nfield)
   Aprime[j,] = v/sqrt(sum(v^2))
   for (i in 1:nst){
     B = (Aprime[,((i-1)*nfield+1):(i*nfield)]
-         *t(Aprime[,((i-1)*nfield+1):(i*nfield)])
+         %*% t(Aprime[,((i-1)*nfield+1):(i*nfield)])
          )
     ccprime[i,] = t(B)
   }
