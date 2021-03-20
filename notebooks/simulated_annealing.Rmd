@@ -11,13 +11,38 @@ Port of Emery's SA algorithm for LMC fitting
 library(tidyverse)
 ```
 
+Iterations are stopped when 1) the number of iterations without modification is greater than maxiterations,  or 2) the computing time is greater than max_time_s. Parameters maxiterations and max_time_s can be modified in the script below, as well as the cooling parameters and correlation between generated Gaussian vectors.
+
+Hyperparameters:
+- maxiterations: maximum number of consecutive iterations with no accepted transitions
+- max_time_s: maximum processing time in seconds
+- cooling parameters (p_acc_0/p_acc_2k): probability of accepting a non-favorable transition at iteration 0 and 2000
+- vector correlation: correlation between generated Gaussian vectors
+gen_vec_corr = 0.9;             % correlation between generated Gaussian vectors
+
+## Hyperparameters
+```{r}
+#maximum number of consecutive iterations with no accepted transitions
+maxiterations = 5e3
+# maximum processing time in seconds
+max_time_s = 100
+# probability of accepting a non-favorable transition at iteration 0
+p_acc_0 = 0.9
+# probability of accepting a non-favorable transition at iteration 2000
+p_acc_2k = 0.1 
+# correlation between generated Gaussian vectors
+gen_vec_corr = 0.9
+# absolute comparison threshold for machine accuracy)
+eps_thresh = 1E-12
+```
+
 ## Functions
+
 
 ```{r}
 # Compute covariance for reduced distance h
-cova <- function(type, h, b){
-  epsilon = 1e-12
-  if (type < 0){
+cova <- function(type, h, epsilon = 1e-12){
+  if (type <= 0){
     # Constant value
     return(0*h+1)
   } else if (type < 1){
@@ -36,11 +61,10 @@ cova <- function(type, h, b){
   } else if (type<7){
     # Gaussian model
     return(exp(-h^2))
-  } else if (type<14){
+  } else {
+    warning('Unavailable covariance model, using linear model')
     # Linear Model
     return(-h)
-  } else {
-    stop('Unavailable covariance model')
   }
 }
 ```
@@ -54,7 +78,7 @@ setrot <- function(model, it){
   
   # matrix of coordinate reduction
   redmat = matrix(0,nrow=3,ncol=3)
-  diag(redmat) = (1./(eps+ranges))
+  diag(redmat) = (1./(eps_thresh+ranges))
   
   a = (90-angles[1])*deg2rad
   b = -angles[2]*deg2rad
@@ -85,7 +109,6 @@ setrot <- function(model, it){
 ## Basics
 
 Instructions minus GAM
-We only use traditional variograms (gstat)
 
 ```{r cars}
 azimuth = rep(c(0,0),6)
@@ -98,37 +121,44 @@ s2 = c(2,3,3,6.7,0,0,0,1)
 s3 = c(2,10,10,26.7,0,0,0,1)
 s4 = c(1,80,80,1E8,0,0,0,1)
 model = rbind(s1,s2,s3,s4)
-weight=1
+weighting_method=1
 display=TRUE
 vartype =1
 ```
 
-## Load GAM
+Inputs
 
+*azm* - azimuth for sample variogram/covariance (nvariogram * 1 vector). That is,
+what azimuth is the variogram computed at? Units in degrees
 
-## Hyperparameters
-```{r}
-#maximum number of consecutive iterations with no accepted transitions
-maxiterations = 5e3
-# maximum processing time in seconds
-tmax = 100
-# probability of accepting a non-favorable transition at iteration 0
-p0 = 0.9
-# probability of accepting a non-favorable transition at iteration 2000
-p2000 = 0.1 
-# correlation between generated Gaussian vectors
-r = 0.9
-# eps (machine accuracy)
-eps = 1E-12
-```
+*dip* - dips for sample variogram/covariance (nvariog * 1 vector). That is, what 
+dip is the variogram computed at? Units in degrees
+
+*nlag*  - number of lags for each variogram/correlogram (nvariog * 1 vector), defines 
+
+*tail* - tail variables (nvariog * 1 vector), an integer vector of the variables at the tail of the variogram (1 -> 1 is a variogram, 1->2 is a covariogram)
+
+*head* - head variables (nvariog * 1 vector), an integer vector the variables at the head of the variogram/covariance.
+
+*model* - the variogram/covariance model matrix with dimensions of the number of structures (n_structures) * 8. Each row refers to a nested structure, codified as [type, scale factors, angles, shape parameter]. There are three scale factors (along the rotated y, x and z axes) and three angles to define the coordinate rotation (azimuth, dip and plunge). See Deutsch and Journel, 1992, p. 25. This port of Emery's code accepts the following types: nugget (0), spherical (1), exponential(2), gamma(3), Gaussian(6), linear(14). Angles in degrees.
+
+*weighting_method* - the method used to quantify weights of points: 0: no weighting, 1: weights proportional to number of pairs, 2: weights inversely proportional to distance, 3: weights proportional to number of pairs and inversely proportional to distance. All weights must add to 1 (normalized)
+
+*gam* - dataframe of simple and cross variograms/covariances. The shape of the dataframe should be sum(nlag) rows x 3 columns. Columns must correspond to [lag_distance, n_pairs, variance/covariance]. Must match up with the number of variograms and the specified lags in nlag.
+
+*vartype* - the script handles traditional variograms (1) or centered covariances (2).
+
+Outputs
+
+*sills* - sills of nested structures (n_structures * n_fields^2 matrix)
+*WSS* - weighted sum of squares for optimal fit
 
 ## Define Other Parameters
 
 ```{r}
 azm = pi/180*azimuth
 dip = pi/180*dip
-#directing vector
-u = matrix(c(sin(azm)*cos(dip), 
+directing_vector = matrix(c(sin(azm)*cos(dip), 
     cos(azm)*cos(dip),  
     sin(dip)), 
     ncol=3)
@@ -137,12 +167,12 @@ nvariog = length(azm)
 
 nlag = c(0,cumsum(nlag))
 n = nlag[nvariog+1]
-nfield = max(tail,head)
-nst = dim(model)[1]
+n_fields = max(tail,head)
+n_structures = dim(model)[1]
 if (dim(model)[1]<8){model[,8] = 1}
 if (max(model[,1])>11){stop('Error in model type')}
 
-cc = matrix(0, nrow=nst, ncol=nfield^2)
+cc = matrix(0, nrow=n_structures, ncol=n_fields^2)
 ```
 
 ## Make Variogram
@@ -151,18 +181,18 @@ cc = matrix(0, nrow=nst, ncol=nfield^2)
 gam = read_csv('/home/smckean/Desktop/emery_lmc/ex_var.csv', col_names =c('lag_dist','npairs', 'variance'))
 
 # remove zero distances
-is_zero_dist = (abs(gam[,1])<eps) & (abs(gam[,3])<eps)
+is_zero_dist = (abs(gam[,1])<eps_thresh) & (abs(gam[,3])<eps_thresh)
 gam = gam[!is_zero_dist,]
   
-# define weights for optimization
-if (weight == 0){
+# define weighting_methods for optimization
+if (weighting_method == 0){
   weights = gam[,2]*0+1
-} else if (weight == 1){
+} else if (weighting_method == 1){
   weights = gam[,2]
-} else if (weight == 2){
+} else if (weighting_method == 2){
   weights = 1/(1e-10+gam[,1])
 } else {
-  weights = gam[,2]/(1e-10+gam[,1])
+  weighting_methods = gam[,2]/(1e-10+gam[,1])
 }
 weights = weights/sum(weights)
 ```
@@ -174,7 +204,7 @@ for (l in 1:nvariog){
   lag_mat = matrix(c(lag,lag,lag), ncol=3)
   dim(lag_mat)
   u_mat = matrix(
-    rep(u[l,], dim(lag_mat)[1])
+    rep(directing_vector[l,], dim(lag_mat)[1])
     ,ncol=3, byrow=TRUE
     )
   h_mat = lag_mat * u_mat
@@ -185,18 +215,21 @@ for (l in 1:nvariog){
   }
 }
 
-g=matrix(0, nrow=dim(h)[1], ncol=nst)
-for (i in 1:nst){
-  R = setrot(model,i)
-  ha = h %*% t(R)
-  ha = sqrt(colSums(t(ha)^2))
-  C = cova(model[i,1],ha,model[i,8])
+g=matrix(0, nrow=dim(h)[1], ncol=n_structures)
+
+for (i in 1:n_structures){
+  rot_model = setrot(model,i)
+  h_adj = h %*% t(rot_model)
+  h_adj = sqrt(colSums(t(h_adj)^2))
+  C = cova(model[i,1],h_adj)
   g[,i] = C
 }
 
 if (vartype == 1){
-  g = matrix(1, nrow=dim(h)[1]-1, ncol=nst)-g[2:(n+1),]
+  # traditional variograms
+  g = matrix(1, nrow=dim(h)[1]-1, ncol=n_structures)-g[2:(n+1),]
 } else {
+  # centered covariance
   g = g[2:n+1,]
 }
 ```
@@ -205,21 +238,21 @@ if (vartype == 1){
 # Initialization
 A = cbind(
   diag(3), 
-  matrix(0, nrow=nfield,ncol=(nst-1)*nfield)
+  matrix(0, nrow=n_fields,ncol=(n_structures-1)*n_fields)
   )
 
-for (i in 1:nst){
-  A_p = A[,((i-1)*nfield+1):(i*nfield)]
+for (i in 1:n_structures){
+  A_p = A[,((i-1)*n_fields+1):(i*n_fields)]
   B = A_p * t(A_p)
   if (i==1){
-    cc = as.vector(B)
+    sills = as.vector(B)
   } else {
-    cc = rbind(cc, as.vector(B))
+    sills = rbind(sills, as.vector(B))
   }
 }
 
-v0 = A
-gamma = g %*% cc
+gen_vec_init = A
+gamma = g %*% sills
 WSS = 0
 for (l in 1:nvariog){
   this_gam = gamma[(nlag[l]+1):(nlag[l+1]),]
@@ -227,7 +260,7 @@ for (l in 1:nvariog){
     c(this_gam[,1:3],
       this_gam[,4:6],
       this_gam[,7:9]),
-    dim = c(nlag[l+1]-nlag[l],nfield,nfield))
+    dim = c(nlag[l+1]-nlag[l],n_fields,n_fields))
   gammail = gammail[,tail[l],head[l]]
   WS_vec = (
     + t(weights[(nlag[l]+1):nlag[l+1],])
@@ -235,33 +268,32 @@ for (l in 1:nvariog){
     )
   WSS = WSS + sum(WS_vec)
 }
-t0 = -WSS/log(p0)
-alpha = exp(log(-WSS/t0/log(p2000))/2000)
+t0 = -WSS/log(p_acc_0)
+alpha = exp(log(-WSS/t0/log(p_acc_2k))/2000)
 ```
 
 ## Iteration
 
 ```{r}
 t_start = Sys.time()
-t = 0
-number = 0
-nit = 0 
-while (number<maxiterations & t<tmax){
+rejections = 0
+iterations = 0 
+while ((iterations < maxiterations) & ((Sys.time()-t_start) < max_time_s)){
   print(WSS)
-  nit = nit +1
-  temperature = t0*alpha^(nit-1) 
-  j = ceiling(nfield*runif(1))
-  ccprime = cc
+  iterations = iterations +1
+  temperature = t0*alpha^(iterations-1) 
+  this_field = ceiling(n_fields*runif(1))
+  old_sills = sills
   Aprime = A
-  v = r*v0[j,] + sqrt(1-r*r)*rnorm(nst*nfield)
-  Aprime[j,] = v/sqrt(sum(v^2))
-  for (i in 1:nst){
-    B = (Aprime[,((i-1)*nfield+1):(i*nfield)]
-         %*% t(Aprime[,((i-1)*nfield+1):(i*nfield)])
+  gen_vec = gen_vec_corr*gen_vec_init[this_field,] + sqrt(1-gen_vec_corr*gen_vec_corr)*rnorm(n_structures*n_fields)
+  Aprime[this_field,] = gen_vec/sqrt(sum(gen_vec^2))
+  for (i in 1:n_structures){
+    B = (Aprime[,((i-1)*n_fields+1):(i*n_fields)]
+         %*% t(Aprime[,((i-1)*n_fields+1):(i*n_fields)])
          )
-    ccprime[i,] = t(B)
+    old_sills[i,] = t(B)
   }
-  gammaprime = g %*% ccprime
+  gammaprime = g %*% old_sills
   WSSprime = 0
   for (l in 1:nvariog){
     this_gam = gammaprime[(nlag[l]+1):(nlag[l+1]),]
@@ -269,7 +301,7 @@ while (number<maxiterations & t<tmax){
       c(this_gam[,1:3],
         this_gam[,4:6],
         this_gam[,7:9]),
-      dim = c(nlag[l+1]-nlag[l],nfield,nfield))
+      dim = c(nlag[l+1]-nlag[l],n_fields,n_fields))
     gammail = gammail[,tail[l],head[l]]
     WS_vec = (
       + t(weights[(nlag[l]+1):nlag[l+1],])
@@ -280,82 +312,12 @@ while (number<maxiterations & t<tmax){
   accept = (runif(1) < exp((WSS-WSSprime)/temperature))
   if (accept == TRUE){
     A = Aprime
-    cc = ccprime
+    sills = old_sills
     WSS = WSSprime
-    number = 0
-    v0[j,] = v
+    rejections = 0
+    gen_vec_init[this_field,] = gen_vec
   } else {
-    number = number+1
-  }
-  t = Sys.time()-t_start
-}
-```
-
-# Make plots
-
-```{r}
-neg = 0
-for (l in 1:nvariog){
-  hmax = max(gam[(nlag[l]+1):nlag[l+1],1])
-  if(l == 1){
-    h = 0:200*hmax/200 * u[l,]
-  } else {
-    h = 
+    rejections = rejections+1
   }
 }
-    
-    h = [h;[0:200]'*hmax/200*u(l,:)];
-  end
-  g = zeros(201*nvariog,nst);
-  for i = 1:nst
-    R = setrot(model,i);
-    ha = h*R';
-    ha = sqrt(sum(ha'.^2))';
-    C = cova(model(i,1),ha,model(i,8))+0;
-    g(:,i) = C;
-  end
-  if vartype==1,
-    g = ones(size(g,1),1)*g(1,:) - g(1:size(g,1),:);
-  end
-  gamma = g*cc;  
-  h = sqrt(sum(h.^2,2));
-  colors = [];
-  symbol = [];
-  while(size(colors,1)<nvariog), colors = [colors;['k';'b';'g';'r';'c';'m';'y']]; end
-  while(size(symbol,1)<nvariog), symbol = [symbol;['x';'+';'*';'o';'s';'d';'v';'^';'<';'>';'p';'h']]; end
-  figure(max(1,round(display)));
-  clf;
-  set(gcf,'DefaultAxesFontName','Times','DefaultAxesFontSize',6)
-  count = zeros(nfield,nfield);
-  hmin = zeros(nfield,nfield);
-  hmax = zeros(nfield,nfield);
-  if min(gam(:,1))<0, neg = 1; end
-  for l = 1:nvariog
-    i = tail(l);
-    j = head(l);
-    count(i,j) = count(i,j)+1;
-    k = (j-1)*nfield+i;
-    subplot(nfield,nfield,k);
-    set(gcf,'DefaultAxesFontName','Times','DefaultAxesFontSize',6)
-    hold on;
-    plot(gam(nlag(l)+1:nlag(l+1),1),gam(nlag(l)+1:nlag(l+1),3),[colors(count(i,j),:) symbol(count(i,j),:)]);
-    if vartype==1
-      plot(h((l-1)*201+2:l*201),gamma((l-1)*201+2:l*201,k),[colors(count(i,j),:) '-'],'LineWidth',1);
-    else
-      plot(h((l-1)*201+1:l*201),gamma((l-1)*201+1:l*201,k),[colors(count(i,j),:) '-'],'LineWidth',1);
-    end
-    if neg==1
-      if vartype==1
-        plot(-h((l-1)*201+2:l*201),gamma((l-1)*201+2:l*201,k),[colors(count(i,j),:) '-'],'LineWidth',1);
-      else
-        plot(-h((l-1)*201+1:l*201),gamma((l-1)*201+1:l*201,k),[colors(count(i,j),:) '-'],'LineWidth',1);
-      end
-    end    
-    hmin(i,j) = min(hmin(i,j),min(gam(nlag(l)+1:nlag(l+1),1)));
-    hmax(i,j) = max(hmax(i,j),max([h(l*201);gam(nlag(l)+1:nlag(l+1),1)]));
-    a = axis;
-    if a(3)>0, a(3)=0; end
-    if a(4)<0, a(4)=0; end
-    axis([hmin(i,j) hmax(i,j) a(3) a(4)]);
-  end
 ```
