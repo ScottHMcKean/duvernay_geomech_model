@@ -297,15 +297,55 @@ sh_pp_vgm = vgm(0.5, "Lin", 10E3, add.to = sh_pp_vgm)
 sh_pp_vgm = vgm(0, "Lin", 3E3, add.to=sh_pp_vgm)
 g = gstat(g, id=c('shmin','pp'), model=sh_pp_vgm, beta=0, nmax=50)
 
-v = variogram(g)
+v = variogram(g, cressie=TRUE)
 
 g = fit.lmc(v,g, fit.lmc =TRUE)
 
 plot(v,g)
 g
-
-edit(fit.lmc)
 ```
+
+Parse variogram for simulated annealing
+
+```{r}
+# get summary of variogram
+vgm_stats = v %>% group_by(id) %>% 
+  summarize(
+    azimuth = mean(dir.hor), 
+    dip = mean(dir.ver), 
+    nlag = n()
+    ) %>% 
+  mutate(tail = case_when(
+    id == 'sv.pp' ~ 1,
+    id == 'shmin.pp' ~ 2,
+    id == 'pp' ~ 3,
+    id == 'sv.shmin' ~ 1,
+    id == 'shmin' ~ 2,
+    id == 'sv' ~ 1,
+    TRUE ~ 0
+  )) %>%
+  mutate(head = case_when(
+    id == 'sv.pp' ~ 3,
+    id == 'shmin.pp' ~ 3,
+    id == 'pp' ~ 3,
+    id == 'sv.shmin' ~ 2,
+    id == 'shmin' ~ 2,
+    id == 'sv' ~ 1,
+    TRUE ~ 0
+  ))
+
+# generate variogram with proper column names
+vgm_sa = v %>%
+  select(lag_dist = dist, npairs = np, variance = gamma)
+
+vgm_export = list(vgm_stats, vgm_sa)
+names(vgm_export) = c('vgm_stats', 'vgm')
+
+saveRDS(vgm_export, 'stress_vgm_sa_export.rds')
+
+```
+We use omnidirectional variograms
+
 
 Do conditional Gaussian cosimulation with three variables, a local neighbourhood of 50 points.
 
@@ -318,6 +358,6 @@ This fit isn't significantly improved by simulating two variables at a time, so 
 - Simulation relies primarily on the cross-variograms, which means the absolute values may very but the relative difference should be minimized, which is very important for this study.
 
 ```{r}
-g$set = list(nocheck=1)
-pred = predict(g, st_grid, nsim=10)
+#g$set = list(nocheck=1)
+#pred = predict(g, st_grid, nsim=1)
 ```

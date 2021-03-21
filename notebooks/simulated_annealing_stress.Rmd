@@ -9,6 +9,7 @@ Port of Emery's SA algorithm for LMC fitting
 
 ```{r setup, include=FALSE}
 library(tidyverse)
+source('../R/geostats.R')
 ```
 
 Iterations are stopped when 1) the number of iterations without modification is greater than maxiterations,  or 2) the computing time is greater than max_time_s. Parameters maxiterations and max_time_s can be modified in the script below, as well as the cooling parameters and correlation between generated Gaussian vectors.
@@ -36,86 +37,15 @@ gen_vec_corr = 0.9
 eps_thresh = 1E-12
 ```
 
-## Functions
-
-
-```{r}
-# Compute covariance for reduced distance h
-cova <- function(type, h, epsilon = 1e-12){
-  if (type <= 0){
-    # Constant value
-    return(0*h+1)
-  } else if (type < 1){
-    # Nugget
-    return(as.integer(h<epsilon))
-  } else if (type < 2){
-    # Spherical model
-    return(
-      1 
-      - 1.5*ifelse(h>1,1,h) 
-      + 0.5*ifelse(h^3>1,1,h^3)
-      )
-  } else if (type < 3){
-    # Exponential
-    return(exp(-h))
-  } else if (type<7){
-    # Gaussian model
-    return(exp(-h^2))
-  } else {
-    warning('Unavailable covariance model, using linear model')
-    # Linear Model
-    return(-h)
-  }
-}
-```
-
-```{r}
-# setup rotation matrix
-setrot <- function(model, it){
-  deg2rad = pi/180
-  ranges = model[it,2:4]
-  angles = model[it,5:7]
-  
-  # matrix of coordinate reduction
-  redmat = matrix(0,nrow=3,ncol=3)
-  diag(redmat) = (1./(eps_thresh+ranges))
-  
-  a = (90-angles[1])*deg2rad
-  b = -angles[2]*deg2rad
-  c = angles[3]*deg2rad
-
-  cosa = cos(a)
-  sina = sin(a)
-  cosb = cos(b)
-  sinb = sin(b)
-  cosc = cos(c)
-  sinc = sin(c)
-  
-  rotmat = matrix(0,nrow=3,ncol=3)
-  rotmat[1,1] = cosb * cosa
-  rotmat[1,2] = cosb * sina
-  rotmat[1,3] = -sinb
-  rotmat[2,1] = -cosc*sina + sinc*sinb*cosa
-  rotmat[2,2] = cosc*cosa + sinc*sinb*sina
-  rotmat[2,3] =  sinc * cosb
-  rotmat[3,1] = sinc*sina + cosc*sinb*cosa
-  rotmat[3,2] = -sinc*cosa + cosc*sinb*sina
-  rotmat[3,3] = cosc * cosb
-
-  solve(rotmat)%*%redmat
-}
-```
-
-## Basics
-
+## Inputs 
 Instructions minus GAM
 
 ```{r cars}
-azimuth = rep(c(0,0),6)
-dip = rep(c(0,90),6)
-nlag = rep(c(20, 20), 6)
-tail = c(1,1,1,1,1,1,2,2,2,2,3,3) 
-head = c(1,1,2,2,3,3,2,2,3,3,3,3)
+azimuth = rep(0,6)
+dip = rep(0,6)
+nlag = rep(20, 6)
+tail = c(1,1,1,2,2,3)
+head = c(1,2,3,2,3,3)
 s1 = c(0,1,1,1,0,0,0,1)
 s2 = c(2,3,3,6.7,0,0,0,1)
 s3 = c(2,10,10,26.7,0,0,0,1)
@@ -124,6 +54,33 @@ model = rbind(s1,s2,s3,s4)
 weighting_method=1
 display=TRUE
 vartype =1
+```
+
+Parse gstat code for variogram stats and variogram
+
+Try three structures - nugget, linear, spherical
+```{r}
+# load variogram variogram export
+
+
+# specify variogram
+azimuth = vgm_stats %>% pull(azimuth)
+dip = vgm_stats %>% pull(dip)
+nlag = vgm_stats %>% pull(nlag)
+tail = vgm_stats %>% pull(tail)
+head = vgm_stats %>% pull(head)
+vartype=1
+
+# load variogram
+
+
+#specify model
+nugget = c(0, 5000, 10000, 50000, 0, 0, 0, 1)
+spherical = c(1, 5000, 10000, 50000, 0, 0, 0, 1)
+linear = c(5, 5000, 10000, 50000, 0, 0, 0, 1)
+model = rbind(nugget, spherical, linear)
+weighting_method = 1
+
 ```
 
 Inputs
