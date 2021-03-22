@@ -336,10 +336,13 @@ vgm_stats = v %>% group_by(id) %>%
 
 # generate variogram with proper column names
 vgm_sa = v %>%
-  select(lag_dist = dist, npairs = np, variance = gamma)
+  dplyr::select(lag_dist = dist, npairs = np, variance = gamma)
 
-vgm_export = list(vgm_stats, vgm_sa)
-names(vgm_export) = c('vgm_stats', 'vgm')
+vgm_id = v %>%
+  dplyr::select(id)
+
+vgm_export = list(vgm_stats, vgm_sa, vgm_id)
+names(vgm_export) = c('vgm_stats', 'vgm', 'vgm_id')
 
 saveRDS(vgm_export, 'stress_vgm_sa_export.rds')
 

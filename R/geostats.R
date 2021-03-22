@@ -65,6 +65,9 @@ cova <- function(type, h, epsilon = 1e-12){
   } else if (type == 4){
     # Gaussian model
     return(exp(-h^2))
+  } else if (type == 5){
+    # Linear Model
+    return(-h)
   } else {
     warning('Unavailable covariance model, using linear model')
     # Linear Model
@@ -110,4 +113,23 @@ setrot <- function(model, it){
   rotmat[3,3] = cosc * cosb
 
   solve(rotmat)%*%redmat
+}
+
+#' Calculate weights for variogram for simulated annealing
+#' @param weighting_method 0:constant weight, 1: ~npairs, 2:~/distance 3: ~npairs/distance
+#' @param gam the variogram/correlogram
+#' @return vector of weights, equal to nrows of variogram
+#' @export
+#'
+calculate_weights <- function(weighting_method, gam){
+  if (weighting_method == 0){
+    weights = gam[,2]*0+1
+  } else if (weighting_method == 1){
+    weights = gam[,2]
+  } else if (weighting_method == 2){
+    weights = 1/(1e-10+gam[,1])
+  } else {
+    weights = gam[,2]/(1e-10+gam[,1])
+  }
+  weights/sum(weights)
 }
