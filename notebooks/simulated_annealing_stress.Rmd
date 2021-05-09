@@ -10,59 +10,10 @@ Port of Emery's SA algorithm for LMC fitting
 ```{r setup, include=FALSE}
 library(tidyverse)
 source('../R/geostats.R')
-```
-
-Iterations are stopped when 1) the number of iterations without modification is greater than maxiterations,  or 2) the computing time is greater than max_time_s. Parameters maxiterations and max_time_s can be modified in the script below, as well as the cooling parameters and correlation between generated Gaussian vectors.
-
-Hyperparameters:
-- maxiterations: maximum number of consecutive iterations with no accepted transitions
-- max_time_s: maximum processing time in seconds
-- cooling parameters (p_acc_0/p_acc_2k): probability of accepting a non-favorable transition at iteration 0 and 2000
-- vector correlation: correlation between generated Gaussian vectors
-gen_vec_corr = 0.9;             % correlation between generated Gaussian vectors
-
-## Hyperparameters
-```{r}
-#maximum number of consecutive iterations with no accepted transitions
-maxiterations = 5e3
-# maximum processing time in seconds
-max_time_s = 100
-# probability of accepting a non-favorable transition at iteration 0
-p_acc_0 = 0.9
-# probability of accepting a non-favorable transition at iteration 2000
-p_acc_2k = 0.1 
-# correlation between generated Gaussian vectors
-gen_vec_corr = 0.9
-# absolute comparison threshold for machine accuracy)
-eps_thresh = 1E-12
+library(gstat)
 ```
 
 ## Inputs 
-Instructions minus GAM
-
-```{r cars}
-azimuth = rep(c(0,0),6)
-dip = rep(c(0,90),6)
-nlag = rep(c(20,20), 6)
-tail = c(1,1,1,1,1,1,2,2,2,2,3,3) 
-head = c(1,1,2,2,3,3,2,2,3,3,3,3)
-
-# load variogram
-gam = read_csv('/home/smckean/Desktop/emery_lmc/ex_var.csv', col_names =c('lag_dist','npairs', 'variance'))
-vartype =1
-
-# specify model
-s1 = c(0,1,1,1,0,0,0,1)
-s2 = c(2,3,3,6.7,0,0,0,1)
-s3 = c(2,10,10,26.7,0,0,0,1)
-s4 = c(1,80,80,1E8,0,0,0,1)
-model = rbind(s1,s2,s3,s4)
-weighting_method=1
-display=TRUE
-
-
-```
-
 Parse gstat code for variogram stats and variogram
 
 Try three structures - nugget, linear, spherical
@@ -79,15 +30,14 @@ head = vgm_import$vgm_stats %>% pull(head)
 
 # load variogram
 gam = vgm_import$vgm %>% as_tibble()
-vartype=1
+vartype = 1
 
 #specify model
-nugget = c(0, 7500, 15000, 30000, 0, 0, 0, 1)
-spherical = c(1, 7500, 15000, 30000, 0, 0, 0, 1)
-linear = c(5, 7500, 15000, 30000, 0, 0, 0, 1)
+nugget = c(0, 7500, 7500, 0, 0, 0, 0, 1)
+spherical = c(1, 7500, 7500, 0, 0, 0, 0, 1)
+linear = c(5, 7500, 7500, 0, 0, 0, 0, 1)
 model = rbind(nugget, spherical, linear)
 weighting_method = 1
-
 ```
 
 Inputs
@@ -117,164 +67,19 @@ Outputs
 *sills* - sills of nested structures (n_structures * n_fields^2 matrix)
 *WSS* - weighted sum of squares for optimal fit
 
-## Initialize Parameters
+Default Hyperparameters
+
+Iterations are stopped when 1) the number of iterations without modification is greater than maxiterations,  or 2) the computing time is greater than max_time_s. Parameters maxiterations and max_time_s can be modified in the script below, as well as the cooling parameters and correlation between generated Gaussian vectors.
+
+Hyperparameters:
+- maxiterations: maximum number of consecutive iterations with no accepted transitions
+- max_time_s: maximum processing time in seconds
+- cooling parameters (p_acc_0/p_acc_2k): probability of accepting a non-favorable transition at iteration 0 and 2000 - maps the cooling relationship
+- vector correlation: correlation between generated Gaussian vectors
+gen_vec_corr = 0.9; % correlation between generated Gaussian vectors
 
 ```{r}
-azm = pi/180*azimuth
-dip = pi/180*dip
-directing_vector = matrix(c(sin(azm)*cos(dip), 
-    cos(azm)*cos(dip),  
-    sin(dip)), 
-    ncol=3)
-
-nvariog = length(azm)
-
-nlag = c(0,cumsum(nlag))
-n = nlag[nvariog+1]
-n_fields = max(tail,head)
-n_structures = dim(model)[1]
-if (dim(model)[1]<8){model[,8] = 1}
-if (max(model[,1])>11){stop('Error in model type')}
-
-sills = matrix(0, nrow=n_structures, ncol=n_fields^2)
-
-# remove zero distances from variogram
-is_zero_dist = (abs(gam[,1])<eps_thresh) & (abs(gam[,3])<eps_thresh)
-gam = gam[!is_zero_dist,]
-
-# calculate variogram/correlogram weights
-weights = calculate_weights(weighting_method, gam)
-
-```
-## Calculate basic structures
-
-```{r}
-for (l in 1:nvariog){
-  lag = gam[(nlag[l]+1):nlag[l+1],1]$lag_dist
-  lag_mat = matrix(c(lag,lag,lag), ncol=3)
-  dim(lag_mat)
-  u_mat = matrix(
-    rep(directing_vector[l,], dim(lag_mat)[1])
-    ,ncol=3, byrow=TRUE
-    )
-  h_mat = lag_mat * u_mat
-  if (l == 1){
-    h = rbind(c(0,0,0),h_mat)
-  } else {
-    h = rbind(h, h_mat)
-  }
-}
-
-g=matrix(0, nrow=dim(h)[1], ncol=n_structures)
-
-for (i in 1:n_structures){
-  rot_model = setrot(model,i)
-  h_adj = h %*% t(rot_model)
-  h_adj = sqrt(colSums(t(h_adj)^2))
-  C = cova(model[i,1],h_adj)
-  g[,i] = C
-}
-
-if (vartype == 1){
-  # traditional variograms
-  g = matrix(1, nrow=dim(h)[1]-1, ncol=n_structures)-g[2:(n+1),]
-} else {
-  # centered covariance
-  g = g[2:n+1,]
-}
-```
-
-```{r}
-# Initialization
-A = cbind(
-  diag(3), 
-  matrix(0, nrow=n_fields,ncol=(n_structures-1)*n_fields)
+res <- fit_linear_model_of_coregionalization(
+  azimuth, dip, nlag, tail, head, gam, model, vartype
   )
-
-for (i in 1:n_structures){
-  A_p = A[,((i-1)*n_fields+1):(i*n_fields)]
-  B = A_p * t(A_p)
-  if (i==1){
-    sills = as.vector(B)
-  } else {
-    sills = rbind(sills, as.vector(B))
-  }
-}
-
-gen_vec_init = A
-gamma = g %*% sills
-WSS = 0
-for (l in 1:nvariog){
-  this_gam = gamma[(nlag[l]+1):(nlag[l+1]),]
-  gammail = array(
-    c(this_gam[,1:3],
-      this_gam[,4:6],
-      this_gam[,7:9]),
-    dim = c(nlag[l+1]-nlag[l],n_fields,n_fields))
-  gammail = gammail[,tail[l],head[l]]
-  WS_vec = (
-    + t(weights[(nlag[l]+1):nlag[l+1],])
-    * (gam[(nlag[l]+1):nlag[l+1],3]-gammail)^2
-    )
-  WSS = WSS + sum(WS_vec)
-}
-t0 = -WSS/log(p_acc_0)
-alpha = exp(log(-WSS/t0/log(p_acc_2k))/2000)
-```
-
-## Iteration
-
-```{r}
-t_start = Sys.time()
-rejections = 0
-iterations = 0 
-while ((iterations < maxiterations) & ((Sys.time()-t_start) < max_time_s)){
-  print(WSS)
-  iterations = iterations +1
-  temperature = t0*alpha^(iterations-1) 
-  this_field = ceiling(n_fields*runif(1))
-  old_sills = sills
-  Aprime = A
-  gen_vec = gen_vec_corr*gen_vec_init[this_field,] + sqrt(1-gen_vec_corr*gen_vec_corr)*rnorm(n_structures*n_fields)
-  Aprime[this_field,] = gen_vec/sqrt(sum(gen_vec^2))
-  for (i in 1:n_structures){
-    B = (Aprime[,((i-1)*n_fields+1):(i*n_fields)]
-         %*% t(Aprime[,((i-1)*n_fields+1):(i*n_fields)])
-         )
-    old_sills[i,] = t(B)
-  }
-  gammaprime = g %*% old_sills
-  WSSprime = 0
-  for (l in 1:nvariog){
-    this_gam = gammaprime[(nlag[l]+1):(nlag[l+1]),]
-    gammail = array(
-      c(this_gam[,1:3],
-        this_gam[,4:6],
-        this_gam[,7:9]),
-      dim = c(nlag[l+1]-nlag[l],n_fields,n_fields))
-    gammail = gammail[,tail[l],head[l]]
-    WS_vec = (
-      + t(weights[(nlag[l]+1):nlag[l+1],])
-      * (gam[(nlag[l]+1):nlag[l+1],3]-gammail)^2
-      )
-    # manually hack this to reduce the nugget
-    nug_adj_fact = sum(old_sills[1,1],old_sills[1,5], old_sills[1,9])
-    WSSprime = WSSprime + sum(WS_vec)*nug_adj_fact
-  }
-  accept = (runif(1) < exp((WSS-WSSprime)/temperature))
-  if (accept == TRUE){
-    A = Aprime
-    sills = old_sills
-    WSS = WSSprime
-    rejections = 0
-    gen_vec_init[this_field,] = gen_vec
-  } else {
-    rejections = rejections+1
-  }
-}
-```
-Plot the variograms - use gstat?
-
-```{r}
-sills
 ```

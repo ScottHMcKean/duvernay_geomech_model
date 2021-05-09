@@ -27,6 +27,7 @@ library(tidyverse)
 library(viridis)
 
 source('../R/geospatial.R')
+source('../R/geostats.R')
 ```
 
 ## Load spatial dataframes
@@ -46,7 +47,6 @@ shale_sf = logs_sf %>% filter(facies == 'dv_shale')
 shale_sp = as_Spatial(shale_sf)
 carb_sf = logs_sf %>% filter(facies == 'dv_carb')
 carb_sp = as_Spatial(carb_sf)
-
 ```
 # Variography
 
@@ -385,55 +385,46 @@ RHOB, DTC, DTS are simulated separately for carbonate and shale
 
 Shale first 
 ```{r}
-# secondary (SV)
-sv_vgm = vgm(0.3, "Sph", 50E3, 0.2)
-sv_vgm = vgm(0.5, "Lin", 10E3, add.to=sv_vgm)
-g = gstat(id='sv', formula=svgrad_norm~1, data=sv_sp, beta=0, nmax=50)
-g = gstat(g, id='sv', model=sv_vgm)
+# setup model structures
+vmodel = vgm(0, "Sph", 40E3)
+vmodel = vgm(0, "Sph", 15E3)
+vmodel = vgm(0, "Lin", 5E3, add.to=vmodel)
+vmodel = vgm(0, "Exp", 30E3, add.to=vmodel)
+vmodel = vgm(0, "Nug", 0, add.to=vmodel)
 
-rhob_vgm = vgm(0.3, "Sph", 50E3, 0.2)
-rhob_vgm = vgm(0.5, "Lin", 10E3, add.to=rhob_vgm)
-g = gstat(g, id='rhob', formula=rhob_norm~1, data=shale_rhob, beta=0, nmax=50)
-g = gstat(g, id='rhob', model=rhob_vgm)
-
-dtc_vgm = vgm(0.5, "Sph", 50E3, 0.2)
-dtc_vgm = vgm(0.5, "Lin", 10E3, add.to=dtc_vgm)
-g = gstat(g, id='dtc', formula = dtc_norm~1, data=shale_dtc, beta=0, nmax=50)
-g = gstat(g, id='dtc', model=dtc_vgm)
-
-dts_vgm = vgm(0.5, "Sph", 50E3, 0.2)
-dts_vgm = vgm(0.5, "Lin", 10E3, add.to=dts_vgm)
-g = gstat(g, id='dts', formula = dts_norm~1, data=shale_dts, beta=0, nmax=50)
-g = gstat(g, id='dts', model=dts_vgm)
-
-cross_vgm = vgm(0.5, "Sph", 50E3, 0.2)
-cross_vgm = vgm(0.5, "Lin", 10E3, add.to=cross_vgm)
-g = gstat(g, id=c('sv','rhob'), model=cross_vgm, beta=0, nmax=50)
-g = gstat(g, id=c('sv','dtc'), model=cross_vgm, beta=0, nmax=50)
-g = gstat(g, id=c('sv','dts'), model=cross_vgm, beta=0, nmax=50)
-g = gstat(g, id=c('rhob','dtc'), model=cross_vgm, beta=0, nmax=50)
-g = gstat(g, id=c('rhob','dts'), model=cross_vgm, beta=0, nmax=50)
-g = gstat(g, id=c('dtc','dts'), model=cross_vgm, beta=0, nmax=50)
+# setup problem in gstat
+g = gstat(id='sv', formula=svgrad_norm~1, data=sv_sp, beta=0, nmax=50, model=vmodel)
+g = gstat(g, id='rhob', formula=rhob_norm~1, data=shale_rhob, beta=0, nmax=50, model=vmodel)
+g = gstat(g, id='dtc', formula = dtc_norm~1, data=shale_dtc, beta=0, nmax=50, model=vmodel)
+g = gstat(g, id='dts', formula = dts_norm~1, data=shale_dts, beta=0, nmax=50, model=vmodel)
+g = gstat(g, id=c('sv','rhob'), model=vmodel, beta=0, nmax=50)
+g = gstat(g, id=c('sv','dtc'), model=vmodel, beta=0, nmax=50)
+g = gstat(g, id=c('sv','dts'), model=vmodel, beta=0, nmax=50)
+g = gstat(g, id=c('rhob','dtc'), model=vmodel, beta=0, nmax=50)
+g = gstat(g, id=c('rhob','dts'), model=vmodel, beta=0, nmax=50)
+g = gstat(g, id=c('dtc','dts'), model=vmodel, beta=0, nmax=50)
 
 v = variogram(g)
 
-g = fit.lmc(v,g, fit.lmc =TRUE, fit.method=1)
+plot(v,g)
+```
+```{r}
+# setup lmc problem
+lmc_in = make_lmc_input(g, vmodel)
+gam = lmc_in$gam
+# run the lmc algorithm
+res <- fit_linear_model_of_coregionalization(
+  lmc_in$azimuth, lmc_in$dip, lmc_in$nlag, lmc_in$tail, 
+  lmc_in$head, lmc_in$gam, lmc_in$model, vartype=lmc_in$vartype,
+  weighting_method=1
+  )
+
+g = assign_lmc_sills(g, res$sills)
 
 plot(v,g)
-g
 ```
 
-Do conditional Gaussian cosimulation with three variables, a local neighbourhood of 50 points.
-
-The LMC is likely a poor representation, representing a maximum likelihood estimation given positive definiteness, however, a Bayesian approach would likely be better... but for the purposes of this study we don't care. Honestly, the default settings aren't important because it is so difficult to fit a positive definite matrix with the variograms we see...
-
-This fit isn't significantly improved by simulating two variables at a time, so we stick with a full cosimulation with LMC, despite a poor fit of the LMC. Bayesian methods may be able to improve upon this, but it still serves the point of quantifying uncertainty.
-
-- Matrices are positive definite
-- Matrices pass Cauchy-Schwartz inequality
-- Simulation relies primarily on the cross-variograms, which means the absolute values may very but the relative difference should be minimized, which is very important for this study.
-
 ```{r}
-g$set = list(nocheck=1)
 pred = predict(g, st_grid, nsim=10)
+plot(pred)
 ```

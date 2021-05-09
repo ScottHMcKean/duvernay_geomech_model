@@ -268,16 +268,15 @@ vmodel = vgm(0, "Nug", 0, add.to=vmodel)
 
 # setup problem in gstat
 g = gstat(id='sv', formula=svgrad_norm~1, data=sv_sp, beta=0, nmax=50, model=vmodel)
-g = gstat(g, id='shmin', formula=shgrad_norm~1, data=sh_sp, beta=0, nmax=50, model=vmodel)
+g = gstat(g, id='sh', formula=shgrad_norm~1, data=sh_sp, beta=0, nmax=50, model=vmodel)
 g = gstat(g, id='pp', formula = ppgrad_norm~1, data=pp_sp, beta=0, nmax=50, model=vmodel)
-g = gstat(g, id=c('sv','shmin'), beta=0, nmax=50, model=vmodel)
+g = gstat(g, id=c('sv','sh'), beta=0, nmax=50, model=vmodel)
 g = gstat(g, id=c('sv','pp'), beta=0, nmax=50, model=vmodel)
-g = gstat(g, id=c('shmin','pp'), beta=0, nmax=50, model=vmodel)
+g = gstat(g, id=c('sh','pp'), beta=0, nmax=50, model=vmodel)
 
 # make variogram
 v = variogram(g, cressie=TRUE)
 ```
-
 Setup LMC simulated annealing problem and run the LMC algo
 
 ```{r}
@@ -288,12 +287,23 @@ lmc_in = make_lmc_input(g, vmodel)
 res <- fit_linear_model_of_coregionalization(
   lmc_in$azimuth, lmc_in$dip, lmc_in$nlag, lmc_in$tail, 
   lmc_in$head, lmc_in$gam, lmc_in$model, lmc_in$vartype,
-  weighting_method=6
+  weighting_method=6,maxiterations = 6000
   )
 
 g = assign_lmc_sills(g, res$sills)
 
 plot(v,g)
+```
+
+Save model when acceptable
+
+```{r}
+norm_objs = list(sv_norm, pp_norm, sh_norm)
+names(norm_objs) = c('sv','pp','sh')
+
+vgm_obj = list(v,g,lmc_in, norm_objs)
+names(vgm_obj) = c('v','g','lmc_in','norm_objs')
+saveRDS(vgm_obj, '20200508_stress_vgmobj.rds')
 ```
 
 Debug LMC function
@@ -307,10 +317,4 @@ head = lmc_in$head
 gam = lmc_in$gam
 model = lmc_in$model
 vartype = lmc_in$vartype
-```
-Make predictions
-
-```{r}
-pred = predict(g, st_grid, nsim=5)
-plot(pred)
 ```

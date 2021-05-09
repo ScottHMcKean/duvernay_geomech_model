@@ -1,0 +1,86 @@
+---
+title: "Geostatistics CoSimulation"
+author: "Scott McKean"
+date: "05/02/2021"
+output: html_document
+---
+
+# Stress Cosimulation
+
+This document goes over development of a LMC and cosimulation of stress data
+
+```{r setup, include=FALSE}
+# geospatial packages
+library(sf)
+library(gstat)
+library(raster)
+library(sp)
+```
+
+## Load spatial dataframes
+
+```{r cars}
+study_raster = raster::raster('../data/study_raster.tif')
+sv_sf = st_read('../data/sv_sf.GeoJSON') %>%
+  drop_na()
+
+# make a prediction grid
+st_grid <- rasterToPoints(study_raster, spatial = TRUE)
+gridded(st_grid) <- TRUE
+st_grid <- as(st_grid, "SpatialPixels")
+```
+Load v, g, and lmc_in values
+
+```{r}
+vgm_in = readRDS('20200508_stress_vgmobj.rds')
+v = vgm_in$v
+g = vgm_in$g
+lmc_in = vgm_in$lmc_in
+norm_objs = vgm_in$norm_objs
+```
+
+Make predictions
+
+# run predict function --> spatialixelsdataframe
+# back transform normal value to real value using bestnorm package
+# run summaries over columns?! 
+# split dataframes ?!
+
+```{r}
+pred_spdf = predict(g, st_grid, nsim=100)
+
+sv_invert_pred <- function(x){
+  predict(norm_objs$sv, newdata=x, inverse=TRUE)
+}
+
+pp_invert_pred <- function(x){
+  predict(norm_objs$pp, newdata=x, inverse=TRUE)
+}
+
+sh_invert_pred <- function(x){
+  predict(norm_objs$sh, newdata=x, inverse=TRUE)
+}
+
+# invert from normalized values
+trans = pred_spdf
+trans@data <- pred_spdf@data %>%
+  mutate(across(contains('sv'),sv_invert_pred)) %>%
+  mutate(across(contains('pp'),pp_invert_pred)) %>%
+  mutate(across(contains('sh'),sh_invert_pred))
+
+# get rowwise summary statistics for the values (for mapping)
+trans@data %>%
+  rowwise() %>%
+  summarize(
+    sv_mean = mean(c_across(contains('sv'))),
+    sv_sd = sd(c_across(contains('sv'))),
+    sh_mean = mean(c_across(contains('sh'))),
+    sh_sd = sd(c_across(contains('sh'))),
+    pp_mean = mean(c_across(contains('pp'))),
+    pp_sd = sd(c_across(contains('pp')))
+  )
+
+# do machine learning predictions
+# select columns with a specific simulation?
+# 
+```
