@@ -169,7 +169,7 @@ generate_model <- function(data,
   target, features, model_type, pset, prefix, seed=1, train_ratio=0.9,
   mbo_budget= 75L, resample_iters=1000, importance_reps=50){
   set.seed(seed)
-  ml_df = data %>% select(features, target)
+  ml_df = data %>% dplyr::select(features, target)
 
   train_rows = sample(nrow(ml_df)*train_ratio)
   train = ml_df[train_rows,]
@@ -247,4 +247,57 @@ make_3d_plot <- function(sf_df, z_col, col_col, col_func=viridis(50), size=0.1){
     ticktype = 'detailed',
     col = col_func
   )
+}
+
+#' Generate a set of models and results for a feature set
+#' @return plot
+#' @export
+generate_models <- function(
+  mldata,
+  feats,
+  feat_prefix,
+  aux_cols=c("well", "round_depth", "se_vp", "se_vs", "se_vp_per", "se_vs_per"),
+  targets=c("youngs_modulus", "poisson_ratio", "brittleness")
+){
+  for (target in targets){
+    if (target == 'youngs_modulus'){
+      target_suffix='ym'
+    } else if (target == 'poisson_ratio'){
+      target_suffix='pr'
+    } else {
+      target_suffix='br'
+    }
+
+    # glm
+    generate_model(data = mldata, target = target,
+                   features = feats, model_type = "regr.glmnet",
+                   prefix = str_c(feat_prefix,'_glm_',target_suffix),
+                   pset = makeParamSet(
+                     makeNumericParam('alpha',lower = 0, upper = 1),
+                     makeIntegerParam('lambda', lower = -4, upper = 1, trafo = function(x) 10^x)
+                   )
+    )
+
+    # mars
+    generate_model(data = mldata, target = target,
+                   features = feats, model_type = "regr.mars",
+                   prefix = str_c(feat_prefix,'_mars_',target_suffix),
+                   pset = makeParamSet(
+                     makeDiscreteParam('degree',values=c(1,2,3)),
+                     makeIntegerParam('nk', lower = 1, upper = 10)
+                   )
+    )
+
+    # random forest
+    generate_model(data = mldata, target = target,
+                   features = feats, model_type = "regr.ranger",
+                   prefix = str_c(feat_prefix,'_rf_',target_suffix),
+                   pset= makeParamSet(
+                     makeIntegerParam('mtry', lower = 1L, upper = 6L),
+                     makeIntegerParam('num.trees', lower = 10L, upper = 200L),
+                     makeIntegerParam('min.node.size', lower = 0, upper = 1, trafo = function(x) 80^x),
+                     makeNumericParam('sample.fraction', lower = 0.2, upper = 0.9)
+                   )
+    )
+  }
 }
