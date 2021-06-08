@@ -33,7 +33,7 @@ get_resample_regr_res = function(resample){
     group_by(id) %>%
     summarise(mean_pred = mean(response))
 
-  train = resample$pred$data %>%
+  train_res= resample$pred$data %>%
     filter(set=='train') %>%
     merge(train_pred, on='id') %>%
     mutate(ind_var = (response-mean_pred)^2,
@@ -47,7 +47,7 @@ get_resample_regr_res = function(resample){
     group_by(id) %>%
     summarise(mean_pred = mean(response))
 
-  test = resample$pred$data %>%
+  test_res = resample$pred$data %>%
     filter(set=='test') %>%
     merge(test_pred, on='id') %>%
     mutate(ind_var = (response-mean_pred)^2,
@@ -57,10 +57,10 @@ get_resample_regr_res = function(resample){
     as.list()
 
   return(
-    list(train_mean_bias = train$mean_bias,
-         train_mean_variance=train$mean_var,
-         test_mean_bias=test$mean_bias,
-         test_mean_variance=test$mean_var,
+    list(train_mean_bias = train_res$mean_bias,
+         train_mean_variance= train_res$mean_var,
+         test_mean_bias = test_res$mean_bias,
+         test_mean_variance = test_res$mean_var,
          resample_obj = resample)
   )
 }
@@ -87,7 +87,7 @@ make_pdp_plot <- function(i, predictor, feats){
 #' @return TRUE
 #' @export
 plot_pdp <- function(features, target, predictor, prefix){
-  plist <- map(.x = 1:length(features), .f = make_pdp_plot,
+  plist <- purrr::map(.x = 1:length(features), .f = make_pdp_plot,
                predictor = predictor, feats = features)
 
   ggsave(file = paste0('../output/',prefix,"/pdpplot.pdf"),
@@ -172,13 +172,13 @@ generate_model <- function(data,
   ml_df = data %>% dplyr::select(features, target)
 
   train_rows = sample(nrow(ml_df)*train_ratio)
-  train = ml_df[train_rows,]
-  test = ml_df[-train_rows,]
+  train_df = ml_df[train_rows,]
+  test_df = ml_df[-train_rows,]
 
   learner = makeLearner(model_type)
 
-  train_task = makeRegrTask(data = train, target = target)
-  test_task = makeRegrTask(data = test, target = target)
+  train_task = makeRegrTask(data = train_df, target = target)
+  test_task = makeRegrTask(data = test_df, target = target)
   all_task = makeRegrTask(data = ml_df, target = target)
 
   meas = list(mlr::mae, mlr::rmse)
@@ -190,28 +190,28 @@ generate_model <- function(data,
   )
 
   dir.create(paste0('../output/',prefix), showWarnings = FALSE)
-  write_rds(tune_res, paste0('../output/',prefix,"/tune_results.rds"))
+  write_rds(tune_res, str_c('../output/',prefix,"/tune_results.rds"))
 
   # set hyperparameters
   tuned_learner = setHyperPars(learner = learner, par.vals = tune_res$x)
 
   # train final model for performance and interpretation
-  model = train(tuned_learner, train_task)
-  test_predict = predict(model, newdata=test)
-  train_predict = predict(model, newdata=train)
+  model = mlr::train(tuned_learner, train_task)
+  test_predict = predict(model, newdata = test_df)
+  train_predict = predict(model, newdata = train_df)
   predictor = Predictor$new(model, data = ml_df)
 
   # monte-carlo performance measures
-  resample = mlr::resample(
+  resample_obj = mlr::resample(
     tuned_learner, all_task,
     makeResampleDesc("Subsample", iters=resample_iters, split=4/5, predict='both'),
     measures = meas,
     show.info = FALSE
   )
 
-  model_res = get_resample_regr_res(resample)
-  model_res$train_perf = performance(predict(model, newdata=train), measures = meas)
-  model_res$test_perf = performance(predict(model, newdata=test), measures = meas)
+  model_res = get_resample_regr_res(resample_obj)
+  model_res$train_perf = performance(predict(model, newdata=train_df), measures = meas)
+  model_res$test_perf = performance(predict(model, newdata=test_df), measures = meas)
   model_res$model = model
   model_res$tuned_learner = tuned_learner
 
@@ -249,14 +249,18 @@ make_3d_plot <- function(sf_df, z_col, col_col, col_func=viridis(50), size=0.1){
   )
 }
 
-#' Generate a set of models and results for a feature set
-#' @return plot
+#' Wrapper of the Wrapper Function for model generation
+#'
+#' @param mldata the data (dataframe)
+#' @param feats features for model (character vector)
+#' @param feat_prefix the prefix for the feature set
+#' @param targets named prefix of output directory
+#' @return TRUE
 #' @export
 generate_models <- function(
   mldata,
   feats,
   feat_prefix,
-  aux_cols=c("well", "round_depth", "se_vp", "se_vs", "se_vp_per", "se_vs_per"),
   targets=c("youngs_modulus", "poisson_ratio", "brittleness")
 ){
   for (target in targets){
@@ -269,35 +273,38 @@ generate_models <- function(
     }
 
     # glm
-    generate_model(data = mldata, target = target,
-                   features = feats, model_type = "regr.glmnet",
-                   prefix = str_c(feat_prefix,'_glm_',target_suffix),
-                   pset = makeParamSet(
-                     makeNumericParam('alpha',lower = 0, upper = 1),
-                     makeIntegerParam('lambda', lower = -4, upper = 1, trafo = function(x) 10^x)
-                   )
+    generate_model(
+      data = mldata, target = target,
+      features = feats, model_type = "regr.glmnet",
+      pset = makeParamSet(
+         makeNumericParam('alpha',lower = 0, upper = 1),
+         makeIntegerParam('lambda', lower = -4, upper = 1, trafo = function(x) 10^x)
+       ),
+       prefix = str_c(feat_prefix,'_glm_',target_suffix)
     )
 
     # mars
-    generate_model(data = mldata, target = target,
-                   features = feats, model_type = "regr.mars",
-                   prefix = str_c(feat_prefix,'_mars_',target_suffix),
-                   pset = makeParamSet(
-                     makeDiscreteParam('degree',values=c(1,2,3)),
-                     makeIntegerParam('nk', lower = 1, upper = 10)
-                   )
+    generate_model(
+       data = mldata, target = target,
+       features = feats, model_type = "regr.mars",
+       pset = makeParamSet(
+         makeDiscreteParam('degree',values=c(1,2,3)),
+         makeIntegerParam('nk', lower = 1, upper = 10)
+       ),
+       prefix = str_c(feat_prefix,'_mars_',target_suffix)
     )
 
     # random forest
-    generate_model(data = mldata, target = target,
-                   features = feats, model_type = "regr.ranger",
-                   prefix = str_c(feat_prefix,'_rf_',target_suffix),
-                   pset= makeParamSet(
-                     makeIntegerParam('mtry', lower = 1L, upper = 6L),
-                     makeIntegerParam('num.trees', lower = 10L, upper = 200L),
-                     makeIntegerParam('min.node.size', lower = 0, upper = 1, trafo = function(x) 80^x),
-                     makeNumericParam('sample.fraction', lower = 0.2, upper = 0.9)
-                   )
+    generate_model(
+       data = mldata, target = target,
+       features = feats, model_type = "regr.ranger",
+       pset= makeParamSet(
+         makeIntegerParam('mtry', lower = 1L, upper = min(length(feats),6L)),
+         makeIntegerParam('num.trees', lower = 10L, upper = 200L),
+         makeIntegerParam('min.node.size', lower = 0, upper = 1, trafo = function(x) 80^x),
+         makeNumericParam('sample.fraction', lower = 0.2, upper = 0.9)
+       ),
+       prefix = str_c(feat_prefix,'_rf_',target_suffix)
     )
   }
 }

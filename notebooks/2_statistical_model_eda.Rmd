@@ -104,7 +104,7 @@ wres_feats = c("Confining Pressure (MPa)", "Peak Stress (MPa)",
     "Brittleness (MPa)","Orientation","Group")
 
 mldf_wres_clean <- mldf_wres %>% 
-  select(wres_feats) %>% 
+  select(all_of(wres_feats)) %>% 
   janitor::clean_names("upper_camel")
 
 mldf_wres_ym_norm = normalizeFeatures(
@@ -156,7 +156,7 @@ nores_feats = c("Confining Pressure (MPa)", "Peak Stress (MPa)",
     "Orientation","Group")
 
 mldf_nores_clean <- mldf_nores %>% 
-  select(nores_feats) %>%
+  select(all_of(nores_feats)) %>%
   janitor::clean_names("upper_camel")
 
 mldf_nores_ym_norm = normalizeFeatures(

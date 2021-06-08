@@ -1,25 +1,23 @@
 ---
 title: "Geostatistics Data Preparation"
-author: "Scott McKean"
-date: "05/02/2021"
 output: html_document
-editor_options: 
-  chunk_output_type: console
 ---
 
-This notebook loads the raw stress data from Shen et al. (2018)'s publication, produced some figures for the paper, and outputs GeoJSON files for the geostatistics
+This notebook loads the raw stress data from Shen et al. (2018)'s publication, 
+produces some figures for the paper, and outputs GeoJSON files for the geostatistics
 workflow.
 
 ```{r setup, include=FALSE}
-library(duvernaygeomechmodel)
 library(sf)
 library(tidyverse)
 library(janitor)
 library(plot3D)
 library(viridis)
 library(raster)
+library(duvernaygeomechmodel)
 
 # From geospatial_layers_prep.Rmd
+setwd('notebooks')
 study_bounds = st_read('../data/study_bounds.GeoJSON')
 study_proj = st_crs(study_bounds)$proj4string
 study_raster = raster::raster('../data/study_raster.tif')
@@ -50,6 +48,8 @@ st_write(sv_sf, "../data/sv_sf.GeoJSON", delete_dsn=TRUE)
 Show 2D and 3D gradients using viridis scale. The 3D plot demonstrates vertical 
 variability across study area and shows why stress gradient is so important.
 
+*note - needed to manually save 3D plots
+
 ```{r}
 ggplot(sv_sf) +
   geom_sf(data = study_dv_bounds) +
@@ -58,7 +58,7 @@ ggplot(sv_sf) +
   theme_minimal() +
   scale_colour_viridis(option='viridis') +
   coord_sf(datum=st_crs(26911)) +
-  ggsave('../figure_outputs/svgrad_2d.pdf')
+  ggsave('../output/svgrad_2d.pdf')
 
 make_3d_plot(
   sv_sf, 
@@ -70,7 +70,7 @@ make_3d_plot(
 ```
 
 Load Shen et al. (2018)'s shmin data. We assume a kelly bushing height of 7 m, 
-which should be pretty fair.
+which should be pretty fair and at least consistent across the study.
 
 ```{r}
 shmin_sf <- read_tsv('../data-raw/shen2018/DIG_2018_0013_DFITSh.txt') %>%
@@ -117,7 +117,7 @@ pp_sf <- read_tsv('../data-raw/shen2018/DIG_2018_0013_pore_pressure.txt') %>%
   dplyr::mutate(ppgrad_kpa_m = pp/(datum_tvd-7)) %>%
   dplyr::select(datum_elev_masl, datum_mbgs, pp_mpa, ppgrad_kpa_m)
 
-st_write(pp_sf, "../cache/pp_sf.GeoJSON", delete_dsn=TRUE)
+st_write(pp_sf, "../data/pp_sf.GeoJSON", delete_dsn=TRUE)
 ```
 
 Show 2D and 3D gradients using magma scale. Really shows the sparsity of the 
@@ -133,7 +133,7 @@ ggplot(shmin_sf) +
   theme_minimal() +
   scale_colour_viridis(option='magma') +
   coord_sf(datum=st_crs(26911)) +
-  ggsave('../figure_outputs/shmingrad_2d.pdf')
+  ggsave('../output/shmingrad_2d.pdf')
 
 make_3d_plot(
   shmin_sf, 
@@ -156,7 +156,7 @@ ggplot(pp_sf) +
   theme_minimal() +
   scale_colour_viridis(option='plasma') +
   coord_sf(datum=st_crs(26911)) +
-  ggsave('../figure_outputs/ppgrad_kpa_m.pdf')
+  ggsave('../output/ppgrad_2d.pdf')
 
 make_3d_plot(
   pp_sf, 

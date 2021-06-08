@@ -1,0 +1,53 @@
+---
+title: "Untitled"
+author: "Scott McKean"
+date: "10/8/2019"
+output: html_document
+---
+
+```{r setup}
+library(duvernaygeomechmodel)
+set.seed(1)
+```
+
+Load an example model
+
+```{r}
+model_folder = '../output/dev_conf_vp_rho_mars_ym/'
+
+```
+
+Get metrics from output log (.txt)
+
+```{r}
+results = read_tsv(str_c(model_folder,'model_results.txt'), 
+                   skip_empty_rows = TRUE, col_names=FALSE)
+
+train_bias = as.numeric(str_replace(results[2,],"\\[1\\] ",""))
+train_var = as.numeric(str_replace(results[4,],"\\[1\\] ",""))
+test_bias = as.numeric(str_replace(results[6,],"\\[1\\] ",""))
+test_var = as.numeric(str_replace(results[8,],"\\[1\\] ",""))
+
+# cross validated
+train_perf = str_split(results[17,], " ")
+train_mae = as.numeric(train_perf[[1]][1])
+train_rmse  = as.numeric(train_perf[[1]][2])
+
+test_perf = str_split(results[20,], " ")
+test_mae = as.numeric(train_perf[[1]][1])
+test_rmse  = as.numeric(train_perf[[1]][2])
+```
+
+Parse resample object and make a single column for a model performance (train/test)
+for a large histogram of model performance (one for each model - so feats and target)
+
+
+
+```{r}
+resample_obj = read_rds(str_c(model_folder,'resample_results.rds'))$resample_obj
+resample_obj$measures.train
+
+ggplot(resample_obj$measures.train) +
+  geom_boxplot(aes(x=mae))
+
+```

@@ -163,7 +163,6 @@ ggplot() +
 
 writeRaster(dv_top, '../data/dv_top_masl.tif', overwrite=TRUE)
 ```
-
 Load the Duvernay Base
 
 ```{r}

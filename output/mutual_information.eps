@@ -54,48 +54,11 @@
            >>
          ] setcolorspace } bind def
 /srgb { setcolor } bind def
-% begin encoding
-/WinAnsiEncoding [
- /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
- /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
- /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
- /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef
- /space /exclam /quotedbl /numbersign /dollar /percent /ampersand /quoteright
- /parenleft /parenright /asterisk /plus /comma /minus /period /slash
- /zero /one /two /three /four /five /six /seven
- /eight /nine /colon /semicolon /less /equal /greater /question
- /at /A /B /C /D /E /F /G
- /H /I /J /K /L /M /N /O
- /P /Q /R /S /T /U /V /W
- /X /Y /Z /bracketleft /backslash /bracketright /asciicircum /underscore
- /grave /a /b /c /d /e /f /g
- /h /i /j /k /l /m /n /o
- /p /q /r /s /t /u /v /w
- /x /y /z /braceleft /bar /braceright /asciitilde /.notdef
- /Euro /.notdef /quotesinglbase /florin /quotedblbase /ellipsis /dagger /daggerdbl
- /circumflex /perthousand /Scaron /guilsinglleft /OE /.notdef /Zcaron /.notdef
- /.notdef /quoteleft /quoteright /quotedblleft /quotedblright /bullet /endash /emdash
- /tilde /trademark /scaron /guilsinglright /oe /.notdef /zcaron /Ydieresis
- /space /exclamdown /cent /sterling /currency /yen /brokenbar /section
- /dieresis /copyright /ordfeminine /guillemotleft /logicalnot /hyphen /registered /macron
- /degree /plusminus /twosuperior /threesuperior /acute /mu /paragraph /periodcentered
- /cedilla /onesuperior /ordmasculine /guillemotright /onequarter /onehalf /threequarters /questiondown
- /Agrave /Aacute /Acircumflex /Atilde /Adieresis /Aring /AE /Ccedilla
- /Egrave /Eacute /Ecircumflex /Edieresis /Igrave /Iacute /Icircumflex /Idieresis
- /Eth /Ntilde /Ograve /Oacute /Ocircumflex /Otilde /Odieresis /multiply
- /Oslash /Ugrave /Uacute /Ucircumflex /Udieresis /Yacute /Thorn /germandbls
- /agrave /aacute /acircumflex /atilde /adieresis /aring /ae /ccedilla
- /egrave /eacute /ecircumflex /edieresis /igrave /iacute /icircumflex /idieresis
- /eth /ntilde /ograve /oacute /ocircumflex /otilde /odieresis /divide
- /oslash /ugrave /uacute /ucircumflex /udieresis /yacute /thorn /ydieresis
-]
- def
-% end encoding
 %%IncludeResource: font Helvetica
 /Helvetica findfont
 dup length dict begin
   {1 index /FID ne {def} {pop pop} ifelse} forall
-  /Encoding WinAnsiEncoding def
+  /Encoding ISOLatin1Encoding def
   currentdict
   end
 /Font1 exch definefont pop
@@ -103,7 +66,7 @@ dup length dict begin
 /Helvetica-Bold findfont
 dup length dict begin
   {1 index /FID ne {def} {pop pop} ifelse} forall
-  /Encoding WinAnsiEncoding def
+  /Encoding ISOLatin1Encoding def
   currentdict
   end
 /Font2 exch definefont pop
@@ -111,7 +74,7 @@ dup length dict begin
 /Helvetica-Oblique findfont
 dup length dict begin
   {1 index /FID ne {def} {pop pop} ifelse} forall
-  /Encoding WinAnsiEncoding def
+  /Encoding ISOLatin1Encoding def
   currentdict
   end
 /Font3 exch definefont pop
@@ -119,7 +82,7 @@ dup length dict begin
 /Helvetica-BoldOblique findfont
 dup length dict begin
   {1 index /FID ne {def} {pop pop} ifelse} forall
-  /Encoding WinAnsiEncoding def
+  /Encoding ISOLatin1Encoding def
   currentdict
   end
 /Font4 exch definefont pop
@@ -154,9 +117,9 @@ bp
 10.00 setmiterlimit
 0.00 216.00 288.00 216.00 r p3
 0.00 0.00 864.00 432.00 cl
-119.32 257.31 282.52 408.71 cl
+120.07 258.59 282.52 408.71 cl
 /bg { 0.9216 0.9216 0.9216 srgb } def
-119.32 257.31 163.20 151.39 r p2
+120.07 258.59 162.45 150.11 r p2
 1 1 1 srgb
 0.53 setlinewidth
 [] 0 setdash
@@ -164,84 +127,84 @@ bp
 1 setlinejoin
 10.00 setmiterlimit
 np
-145.28 257.31 m
-0 151.40 l
+145.91 258.59 m
+0 150.12 l
 o
 np
-182.37 257.31 m
-0 151.40 l
+182.83 258.59 m
+0 150.12 l
 o
 np
-219.47 257.31 m
-0 151.40 l
+219.76 258.59 m
+0 150.12 l
 o
 np
-256.56 257.31 m
-0 151.40 l
+256.68 258.59 m
+0 150.12 l
 o
 1.07 setlinewidth
 [] 0 setdash
 np
-119.32 268.39 m
-163.20 0 l
+120.07 269.58 m
+162.45 0 l
 o
 np
-119.32 286.85 m
-163.20 0 l
+120.07 287.88 m
+162.45 0 l
 o
 np
-119.32 305.32 m
-163.20 0 l
+120.07 306.19 m
+162.45 0 l
 o
 np
-119.32 323.78 m
-163.20 0 l
+120.07 324.50 m
+162.45 0 l
 o
 np
-119.32 342.24 m
-163.20 0 l
+120.07 342.80 m
+162.45 0 l
 o
 np
-119.32 360.70 m
-163.20 0 l
+120.07 361.11 m
+162.45 0 l
 o
 np
-119.32 379.17 m
-163.20 0 l
+120.07 379.42 m
+162.45 0 l
 o
 np
-119.32 397.63 m
-163.20 0 l
+120.07 397.72 m
+162.45 0 l
 o
 np
-126.74 257.31 m
-0 151.40 l
+127.45 258.59 m
+0 150.12 l
 o
 np
-163.83 257.31 m
-0 151.40 l
+164.37 258.59 m
+0 150.12 l
 o
 np
-200.92 257.31 m
-0 151.40 l
+201.30 258.59 m
+0 150.12 l
 o
 np
-238.01 257.31 m
-0 151.40 l
+238.22 258.59 m
+0 150.12 l
 o
 np
-275.10 257.31 m
-0 151.40 l
+275.14 258.59 m
+0 150.12 l
 o
 /bg { 0.3490 0.3490 0.3490 srgb } def
-126.74 260.08 118.19 16.62 r p2
-126.74 278.55 117.01 16.62 r p2
-126.74 297.01 43.85 16.62 r p2
-126.74 315.47 20.65 16.62 r p2
-126.74 333.93 16.35 16.62 r p2
-126.74 352.40 13.72 16.62 r p2
-126.74 370.86 2.28 16.62 r p2
-126.74 389.32 0.00 16.62 r p2
+127.45 261.34 117.64 16.48 r p2
+127.45 279.65 116.47 16.48 r p2
+127.45 297.95 43.65 16.48 r p2
+127.45 316.26 20.55 16.48 r p2
+127.45 334.57 16.27 16.48 r p2
+127.45 352.87 13.65 16.48 r p2
+127.45 371.18 2.27 16.48 r p2
+127.45 389.49 0.00 16.48 r p2
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
@@ -260,18 +223,18 @@ o
 0.00 0.00 864.00 432.00 cl
 /Font1 findfont 9 s
 0.3020 0.3020 0.3020 srgb
-114.39 265.16 (ShearSonicMS) 1 0 t
-114.39 283.62 (CompressionalSonicMS) 1 0 t
-70.37 302.08 (Or) 0 ta
+115.14 266.35 (ShearSonicMS) 1 0 t
+115.14 284.65 (CompressionalSonicMS) 1 0 t
+71.12 302.96 (Or) 0 ta
 0.135 (ientation) tb gr
-114.39 320.55 (BulkDensityGCm3) 1 0 t
-49.87 339.01 (P) 0 ta
+115.14 321.27 (BulkDensityGCm3) 1 0 t
+50.62 339.57 (P) 0 ta
 -0.450 (eakStressMP) tb
 -0.360 (a) tb gr
-35.37 357.47 (ResidualStressMP) 0 ta
+36.12 357.88 (ResidualStressMP) 0 ta
 -0.360 (a) tb gr
-114.39 375.94 (Group) 1 0 t
-21.86 394.40 (ConfiningPressureMP) 0 ta
+115.14 376.19 (Group) 1 0 t
+22.61 394.49 (ConfiningPressureMP) 0 ta
 -0.360 (a) tb gr
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
@@ -282,35 +245,35 @@ o
 1 setlinejoin
 10.00 setmiterlimit
 np
-116.58 268.39 m
+117.33 269.58 m
 2.74 0 l
 o
 np
-116.58 286.85 m
+117.33 287.88 m
 2.74 0 l
 o
 np
-116.58 305.32 m
+117.33 306.19 m
 2.74 0 l
 o
 np
-116.58 323.78 m
+117.33 324.50 m
 2.74 0 l
 o
 np
-116.58 342.24 m
+117.33 342.80 m
 2.74 0 l
 o
 np
-116.58 360.70 m
+117.33 361.11 m
 2.74 0 l
 o
 np
-116.58 379.17 m
+117.33 379.42 m
 2.74 0 l
 o
 np
-116.58 397.63 m
+117.33 397.72 m
 2.74 0 l
 o
 0.00 0.00 864.00 432.00 cl
@@ -330,34 +293,34 @@ o
 1 setlinejoin
 10.00 setmiterlimit
 np
-126.74 254.57 m
+127.45 255.85 m
 0 2.74 l
 o
 np
-163.83 254.57 m
+164.37 255.85 m
 0 2.74 l
 o
 np
-200.92 254.57 m
+201.30 255.85 m
 0 2.74 l
 o
 np
-238.01 254.57 m
+238.22 255.85 m
 0 2.74 l
 o
 np
-275.10 254.57 m
+275.14 255.85 m
 0 2.74 l
 o
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 /Font1 findfont 9 s
 0.3020 0.3020 0.3020 srgb
-131.31 247.81 (0.00) 1 45.00 t
-168.40 247.81 (0.25) 1 45.00 t
-205.49 247.81 (0.50) 1 45.00 t
-242.58 247.81 (0.75) 1 45.00 t
-279.67 247.81 (1.00) 1 45.00 t
+132.02 249.09 (0.00) 1 45.00 t
+168.94 249.09 (0.25) 1 45.00 t
+205.86 249.09 (0.50) 1 45.00 t
+242.79 249.09 (0.75) 1 45.00 t
+279.71 249.09 (1.00) 1 45.00 t
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
@@ -374,7 +337,7 @@ o
 0.00 0.00 864.00 432.00 cl
 /Font1 findfont 13 s
 0 0 0 srgb
-119.32 417.19 (YM w/ Residual Stress) 0 0 t
+120.07 417.19 (YM w/ Residual Stress) 0 0 t
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
@@ -401,9 +364,9 @@ o
 10.00 setmiterlimit
 288.00 216.00 288.00 216.00 r p3
 0.00 0.00 864.00 432.00 cl
-407.32 257.31 570.52 408.71 cl
+408.07 258.59 570.52 408.71 cl
 /bg { 0.9216 0.9216 0.9216 srgb } def
-407.32 257.31 163.20 151.39 r p2
+408.07 258.59 162.45 150.11 r p2
 1 1 1 srgb
 0.53 setlinewidth
 [] 0 setdash
@@ -411,84 +374,84 @@ o
 1 setlinejoin
 10.00 setmiterlimit
 np
-433.28 257.31 m
-0 151.40 l
+433.91 258.59 m
+0 150.12 l
 o
 np
-470.37 257.31 m
-0 151.40 l
+470.83 258.59 m
+0 150.12 l
 o
 np
-507.47 257.31 m
-0 151.40 l
+507.76 258.59 m
+0 150.12 l
 o
 np
-544.56 257.31 m
-0 151.40 l
+544.68 258.59 m
+0 150.12 l
 o
 1.07 setlinewidth
 [] 0 setdash
 np
-407.32 268.39 m
-163.20 0 l
+408.07 269.58 m
+162.45 0 l
 o
 np
-407.32 286.85 m
-163.20 0 l
+408.07 287.88 m
+162.45 0 l
 o
 np
-407.32 305.32 m
-163.20 0 l
+408.07 306.19 m
+162.45 0 l
 o
 np
-407.32 323.78 m
-163.20 0 l
+408.07 324.50 m
+162.45 0 l
 o
 np
-407.32 342.24 m
-163.20 0 l
+408.07 342.80 m
+162.45 0 l
 o
 np
-407.32 360.70 m
-163.20 0 l
+408.07 361.11 m
+162.45 0 l
 o
 np
-407.32 379.17 m
-163.20 0 l
+408.07 379.42 m
+162.45 0 l
 o
 np
-407.32 397.63 m
-163.20 0 l
+408.07 397.72 m
+162.45 0 l
 o
 np
-414.74 257.31 m
-0 151.40 l
+415.45 258.59 m
+0 150.12 l
 o
 np
-451.83 257.31 m
-0 151.40 l
+452.37 258.59 m
+0 150.12 l
 o
 np
-488.92 257.31 m
-0 151.40 l
+489.30 258.59 m
+0 150.12 l
 o
 np
-526.01 257.31 m
-0 151.40 l
+526.22 258.59 m
+0 150.12 l
 o
 np
-563.10 257.31 m
-0 151.40 l
+563.14 258.59 m
+0 150.12 l
 o
 /bg { 0.3490 0.3490 0.3490 srgb } def
-414.74 260.08 43.44 16.62 r p2
-414.74 278.55 37.16 16.62 r p2
-414.74 297.01 21.56 16.62 r p2
-414.74 315.47 18.73 16.62 r p2
-414.74 333.93 2.09 16.62 r p2
-414.74 352.40 0.00 16.62 r p2
-414.74 370.86 0.00 16.62 r p2
-414.74 389.32 0.00 16.62 r p2
+415.45 261.34 43.24 16.48 r p2
+415.45 279.65 36.99 16.48 r p2
+415.45 297.95 21.46 16.48 r p2
+415.45 316.26 18.64 16.48 r p2
+415.45 334.57 2.08 16.48 r p2
+415.45 352.87 0.00 16.48 r p2
+415.45 371.18 0.00 16.48 r p2
+415.45 389.49 0.00 16.48 r p2
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
@@ -507,18 +470,18 @@ o
 0.00 0.00 864.00 432.00 cl
 /Font1 findfont 9 s
 0.3020 0.3020 0.3020 srgb
-402.39 265.16 (CompressionalSonicMS) 1 0 t
-402.39 283.62 (ShearSonicMS) 1 0 t
-402.39 302.08 (BulkDensityGCm3) 1 0 t
-358.37 320.55 (Or) 0 ta
+403.14 266.35 (CompressionalSonicMS) 1 0 t
+403.14 284.65 (ShearSonicMS) 1 0 t
+403.14 302.96 (BulkDensityGCm3) 1 0 t
+359.12 321.27 (Or) 0 ta
 0.135 (ientation) tb gr
-402.39 339.01 (Group) 1 0 t
-309.86 357.47 (ConfiningPressureMP) 0 ta
+403.14 339.57 (Group) 1 0 t
+310.61 357.88 (ConfiningPressureMP) 0 ta
 -0.360 (a) tb gr
-337.87 375.94 (P) 0 ta
+338.62 376.19 (P) 0 ta
 -0.450 (eakStressMP) tb
 -0.360 (a) tb gr
-323.37 394.40 (ResidualStressMP) 0 ta
+324.12 394.49 (ResidualStressMP) 0 ta
 -0.360 (a) tb gr
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
@@ -529,35 +492,35 @@ o
 1 setlinejoin
 10.00 setmiterlimit
 np
-404.58 268.39 m
+405.33 269.58 m
 2.74 0 l
 o
 np
-404.58 286.85 m
+405.33 287.88 m
 2.74 0 l
 o
 np
-404.58 305.32 m
+405.33 306.19 m
 2.74 0 l
 o
 np
-404.58 323.78 m
+405.33 324.50 m
 2.74 0 l
 o
 np
-404.58 342.24 m
+405.33 342.80 m
 2.74 0 l
 o
 np
-404.58 360.70 m
+405.33 361.11 m
 2.74 0 l
 o
 np
-404.58 379.17 m
+405.33 379.42 m
 2.74 0 l
 o
 np
-404.58 397.63 m
+405.33 397.72 m
 2.74 0 l
 o
 0.00 0.00 864.00 432.00 cl
@@ -577,34 +540,34 @@ o
 1 setlinejoin
 10.00 setmiterlimit
 np
-414.74 254.57 m
+415.45 255.85 m
 0 2.74 l
 o
 np
-451.83 254.57 m
+452.37 255.85 m
 0 2.74 l
 o
 np
-488.92 254.57 m
+489.30 255.85 m
 0 2.74 l
 o
 np
-526.01 254.57 m
+526.22 255.85 m
 0 2.74 l
 o
 np
-563.10 254.57 m
+563.14 255.85 m
 0 2.74 l
 o
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 /Font1 findfont 9 s
 0.3020 0.3020 0.3020 srgb
-419.31 247.81 (0.00) 1 45.00 t
-456.40 247.81 (0.25) 1 45.00 t
-493.49 247.81 (0.50) 1 45.00 t
-530.58 247.81 (0.75) 1 45.00 t
-567.67 247.81 (1.00) 1 45.00 t
+420.02 249.09 (0.00) 1 45.00 t
+456.94 249.09 (0.25) 1 45.00 t
+493.86 249.09 (0.50) 1 45.00 t
+530.79 249.09 (0.75) 1 45.00 t
+567.71 249.09 (1.00) 1 45.00 t
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
@@ -621,7 +584,7 @@ o
 0.00 0.00 864.00 432.00 cl
 /Font1 findfont 13 s
 0 0 0 srgb
-407.32 417.19 (PR w/ Residual Stress) 0 0 t
+408.07 417.19 (PR w/ Residual Stress) 0 0 t
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
@@ -648,9 +611,9 @@ o
 10.00 setmiterlimit
 576.00 216.00 288.00 216.00 r p3
 0.00 0.00 864.00 432.00 cl
-695.32 257.31 858.52 408.71 cl
+696.07 258.59 858.52 408.71 cl
 /bg { 0.9216 0.9216 0.9216 srgb } def
-695.32 257.31 163.20 151.39 r p2
+696.07 258.59 162.45 150.11 r p2
 1 1 1 srgb
 0.53 setlinewidth
 [] 0 setdash
@@ -658,84 +621,84 @@ o
 1 setlinejoin
 10.00 setmiterlimit
 np
-721.28 257.31 m
-0 151.40 l
+721.91 258.59 m
+0 150.12 l
 o
 np
-758.37 257.31 m
-0 151.40 l
+758.83 258.59 m
+0 150.12 l
 o
 np
-795.47 257.31 m
-0 151.40 l
+795.76 258.59 m
+0 150.12 l
 o
 np
-832.56 257.31 m
-0 151.40 l
+832.68 258.59 m
+0 150.12 l
 o
 1.07 setlinewidth
 [] 0 setdash
 np
-695.32 268.39 m
-163.20 0 l
+696.07 269.58 m
+162.45 0 l
 o
 np
-695.32 286.85 m
-163.20 0 l
+696.07 287.88 m
+162.45 0 l
 o
 np
-695.32 305.32 m
-163.20 0 l
+696.07 306.19 m
+162.45 0 l
 o
 np
-695.32 323.78 m
-163.20 0 l
+696.07 324.50 m
+162.45 0 l
 o
 np
-695.32 342.24 m
-163.20 0 l
+696.07 342.80 m
+162.45 0 l
 o
 np
-695.32 360.70 m
-163.20 0 l
+696.07 361.11 m
+162.45 0 l
 o
 np
-695.32 379.17 m
-163.20 0 l
+696.07 379.42 m
+162.45 0 l
 o
 np
-695.32 397.63 m
-163.20 0 l
+696.07 397.72 m
+162.45 0 l
 o
 np
-702.74 257.31 m
-0 151.40 l
+703.45 258.59 m
+0 150.12 l
 o
 np
-739.83 257.31 m
-0 151.40 l
+740.37 258.59 m
+0 150.12 l
 o
 np
-776.92 257.31 m
-0 151.40 l
+777.30 258.59 m
+0 150.12 l
 o
 np
-814.01 257.31 m
-0 151.40 l
+814.22 258.59 m
+0 150.12 l
 o
 np
-851.10 257.31 m
-0 151.40 l
+851.14 258.59 m
+0 150.12 l
 o
 /bg { 0.3490 0.3490 0.3490 srgb } def
-702.74 260.08 46.13 16.62 r p2
-702.74 278.55 35.44 16.62 r p2
-702.74 297.01 24.44 16.62 r p2
-702.74 315.47 2.10 16.62 r p2
-702.74 333.93 0.00 16.62 r p2
-702.74 352.40 0.00 16.62 r p2
-702.74 370.86 0.00 16.62 r p2
-702.74 389.32 0.00 16.62 r p2
+703.45 261.34 45.92 16.48 r p2
+703.45 279.65 35.28 16.48 r p2
+703.45 297.95 24.32 16.48 r p2
+703.45 316.26 2.09 16.48 r p2
+703.45 334.57 0.00 16.48 r p2
+703.45 352.87 0.00 16.48 r p2
+703.45 371.18 0.00 16.48 r p2
+703.45 389.49 0.00 16.48 r p2
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
@@ -754,19 +717,19 @@ o
 0.00 0.00 864.00 432.00 cl
 /Font1 findfont 9 s
 0.3020 0.3020 0.3020 srgb
-611.37 265.16 (ResidualStressMP) 0 ta
+612.12 266.35 (ResidualStressMP) 0 ta
 -0.360 (a) tb gr
-597.86 283.62 (ConfiningPressureMP) 0 ta
+598.61 284.65 (ConfiningPressureMP) 0 ta
 -0.360 (a) tb gr
-646.37 302.08 (Or) 0 ta
+647.12 302.96 (Or) 0 ta
 0.135 (ientation) tb gr
-690.39 320.55 (Group) 1 0 t
-625.87 339.01 (P) 0 ta
+691.14 321.27 (Group) 1 0 t
+691.14 339.57 (BulkDensityGCm3) 1 0 t
+691.14 357.88 (CompressionalSonicMS) 1 0 t
+626.62 376.19 (P) 0 ta
 -0.450 (eakStressMP) tb
 -0.360 (a) tb gr
-690.39 357.47 (BulkDensityGCm3) 1 0 t
-690.39 375.94 (CompressionalSonicMS) 1 0 t
-690.39 394.40 (ShearSonicMS) 1 0 t
+691.14 394.49 (ShearSonicMS) 1 0 t
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 0.2000 0.2000 0.2000 srgb
@@ -776,35 +739,35 @@ o
 1 setlinejoin
 10.00 setmiterlimit
 np
-692.58 268.39 m
+693.33 269.58 m
 2.74 0 l
 o
 np
-692.58 286.85 m
+693.33 287.88 m
 2.74 0 l
 o
 np
-692.58 305.32 m
+693.33 306.19 m
 2.74 0 l
 o
 np
-692.58 323.78 m
+693.33 324.50 m
 2.74 0 l
 o
 np
-692.58 342.24 m
+693.33 342.80 m
 2.74 0 l
 o
 np
-692.58 360.70 m
+693.33 361.11 m
 2.74 0 l
 o
 np
-692.58 379.17 m
+693.33 379.42 m
 2.74 0 l
 o
 np
-692.58 397.63 m
+693.33 397.72 m
 2.74 0 l
 o
 0.00 0.00 864.00 432.00 cl
@@ -824,34 +787,34 @@ o
 1 setlinejoin
 10.00 setmiterlimit
 np
-702.74 254.57 m
+703.45 255.85 m
 0 2.74 l
 o
 np
-739.83 254.57 m
+740.37 255.85 m
 0 2.74 l
 o
 np
-776.92 254.57 m
+777.30 255.85 m
 0 2.74 l
 o
 np
-814.01 254.57 m
+814.22 255.85 m
 0 2.74 l
 o
 np
-851.10 254.57 m
+851.14 255.85 m
 0 2.74 l
 o
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 /Font1 findfont 9 s
 0.3020 0.3020 0.3020 srgb
-707.31 247.81 (0.00) 1 45.00 t
-744.40 247.81 (0.25) 1 45.00 t
-781.49 247.81 (0.50) 1 45.00 t
-818.58 247.81 (0.75) 1 45.00 t
-855.67 247.81 (1.00) 1 45.00 t
+708.02 249.09 (0.00) 1 45.00 t
+744.94 249.09 (0.25) 1 45.00 t
+781.86 249.09 (0.50) 1 45.00 t
+818.79 249.09 (0.75) 1 45.00 t
+855.71 249.09 (1.00) 1 45.00 t
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
@@ -868,7 +831,7 @@ o
 0.00 0.00 864.00 432.00 cl
 /Font1 findfont 13 s
 0 0 0 srgb
-695.32 417.19 (BR w/ Residual Stress) 0 0 t
+696.07 417.19 (BR w/ Residual Stress) 0 0 t
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
@@ -895,9 +858,9 @@ o
 10.00 setmiterlimit
 0.00 0.00 288.00 216.00 r p3
 0.00 0.00 864.00 432.00 cl
-119.32 41.31 282.52 192.71 cl
+120.07 42.59 282.52 192.71 cl
 /bg { 0.9216 0.9216 0.9216 srgb } def
-119.32 41.31 163.20 151.39 r p2
+120.07 42.59 162.45 150.11 r p2
 1 1 1 srgb
 0.53 setlinewidth
 [] 0 setdash
@@ -905,79 +868,79 @@ o
 1 setlinejoin
 10.00 setmiterlimit
 np
-145.28 41.31 m
-0 151.40 l
+145.91 42.59 m
+0 150.12 l
 o
 np
-182.37 41.31 m
-0 151.40 l
+182.83 42.59 m
+0 150.12 l
 o
 np
-219.47 41.31 m
-0 151.40 l
+219.76 42.59 m
+0 150.12 l
 o
 np
-256.56 41.31 m
-0 151.40 l
+256.68 42.59 m
+0 150.12 l
 o
 1.07 setlinewidth
 [] 0 setdash
 np
-119.32 53.93 m
-163.20 0 l
+120.07 55.10 m
+162.45 0 l
 o
 np
-119.32 74.96 m
-163.20 0 l
+120.07 75.95 m
+162.45 0 l
 o
 np
-119.32 95.98 m
-163.20 0 l
+120.07 96.80 m
+162.45 0 l
 o
 np
-119.32 117.01 m
-163.20 0 l
+120.07 117.65 m
+162.45 0 l
 o
 np
-119.32 138.04 m
-163.20 0 l
+120.07 138.50 m
+162.45 0 l
 o
 np
-119.32 159.06 m
-163.20 0 l
+120.07 159.35 m
+162.45 0 l
 o
 np
-119.32 180.09 m
-163.20 0 l
+120.07 180.20 m
+162.45 0 l
 o
 np
-126.74 41.31 m
-0 151.40 l
+127.45 42.59 m
+0 150.12 l
 o
 np
-163.83 41.31 m
-0 151.40 l
+164.37 42.59 m
+0 150.12 l
 o
 np
-200.92 41.31 m
-0 151.40 l
+201.30 42.59 m
+0 150.12 l
 o
 np
-238.01 41.31 m
-0 151.40 l
+238.22 42.59 m
+0 150.12 l
 o
 np
-275.10 41.31 m
-0 151.40 l
+275.14 42.59 m
+0 150.12 l
 o
 /bg { 0.3490 0.3490 0.3490 srgb } def
-126.74 44.47 122.02 18.92 r p2
-126.74 65.49 113.01 18.92 r p2
-126.74 86.52 35.66 18.92 r p2
-126.74 107.55 25.09 18.92 r p2
-126.74 128.57 17.78 18.92 r p2
-126.74 149.60 9.67 18.92 r p2
-126.74 170.63 2.53 18.92 r p2
+127.45 45.72 121.46 18.76 r p2
+127.45 66.57 112.49 18.76 r p2
+127.45 87.42 35.50 18.76 r p2
+127.45 108.27 24.97 18.76 r p2
+127.45 129.12 17.70 18.76 r p2
+127.45 149.97 9.62 18.76 r p2
+127.45 170.82 2.52 18.76 r p2
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
@@ -996,17 +959,17 @@ o
 0.00 0.00 864.00 432.00 cl
 /Font1 findfont 9 s
 0.3020 0.3020 0.3020 srgb
-114.39 50.70 (ShearSonicMS) 1 0 t
-114.39 71.73 (CompressionalSonicMS) 1 0 t
-70.37 92.75 (Or) 0 ta
+115.14 51.87 (ShearSonicMS) 1 0 t
+115.14 72.72 (CompressionalSonicMS) 1 0 t
+71.12 93.57 (Or) 0 ta
 0.135 (ientation) tb gr
-49.87 113.78 (P) 0 ta
+50.62 114.42 (P) 0 ta
 -0.450 (eakStressMP) tb
 -0.360 (a) tb gr
-114.39 134.81 (BulkDensityGCm3) 1 0 t
-21.86 155.83 (ConfiningPressureMP) 0 ta
+115.14 135.27 (BulkDensityGCm3) 1 0 t
+22.61 156.12 (ConfiningPressureMP) 0 ta
 -0.360 (a) tb gr
-114.39 176.86 (Group) 1 0 t
+115.14 176.97 (Group) 1 0 t
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 0.2000 0.2000 0.2000 srgb
@@ -1016,31 +979,31 @@ o
 1 setlinejoin
 10.00 setmiterlimit
 np
-116.58 53.93 m
+117.33 55.10 m
 2.74 0 l
 o
 np
-116.58 74.96 m
+117.33 75.95 m
 2.74 0 l
 o
 np
-116.58 95.98 m
+117.33 96.80 m
 2.74 0 l
 o
 np
-116.58 117.01 m
+117.33 117.65 m
 2.74 0 l
 o
 np
-116.58 138.04 m
+117.33 138.50 m
 2.74 0 l
 o
 np
-116.58 159.06 m
+117.33 159.35 m
 2.74 0 l
 o
 np
-116.58 180.09 m
+117.33 180.20 m
 2.74 0 l
 o
 0.00 0.00 864.00 432.00 cl
@@ -1060,34 +1023,34 @@ o
 1 setlinejoin
 10.00 setmiterlimit
 np
-126.74 38.57 m
+127.45 39.85 m
 0 2.74 l
 o
 np
-163.83 38.57 m
+164.37 39.85 m
 0 2.74 l
 o
 np
-200.92 38.57 m
+201.30 39.85 m
 0 2.74 l
 o
 np
-238.01 38.57 m
+238.22 39.85 m
 0 2.74 l
 o
 np
-275.10 38.57 m
+275.14 39.85 m
 0 2.74 l
 o
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 /Font1 findfont 9 s
 0.3020 0.3020 0.3020 srgb
-131.31 31.81 (0.00) 1 45.00 t
-168.40 31.81 (0.25) 1 45.00 t
-205.49 31.81 (0.50) 1 45.00 t
-242.58 31.81 (0.75) 1 45.00 t
-279.67 31.81 (1.00) 1 45.00 t
+132.02 33.09 (0.00) 1 45.00 t
+168.94 33.09 (0.25) 1 45.00 t
+205.86 33.09 (0.50) 1 45.00 t
+242.79 33.09 (0.75) 1 45.00 t
+279.71 33.09 (1.00) 1 45.00 t
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
@@ -1104,7 +1067,7 @@ o
 0.00 0.00 864.00 432.00 cl
 /Font1 findfont 13 s
 0 0 0 srgb
-119.32 201.19 (YM w/o Residual Stress) 0 0 t
+120.07 201.19 (YM w/o Residual Stress) 0 0 t
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
@@ -1131,9 +1094,9 @@ o
 10.00 setmiterlimit
 288.00 0.00 288.00 216.00 r p3
 0.00 0.00 864.00 432.00 cl
-407.32 41.31 570.52 192.71 cl
+408.07 42.59 570.52 192.71 cl
 /bg { 0.9216 0.9216 0.9216 srgb } def
-407.32 41.31 163.20 151.39 r p2
+408.07 42.59 162.45 150.11 r p2
 1 1 1 srgb
 0.53 setlinewidth
 [] 0 setdash
@@ -1141,79 +1104,79 @@ o
 1 setlinejoin
 10.00 setmiterlimit
 np
-433.28 41.31 m
-0 151.40 l
+433.91 42.59 m
+0 150.12 l
 o
 np
-470.37 41.31 m
-0 151.40 l
+470.83 42.59 m
+0 150.12 l
 o
 np
-507.47 41.31 m
-0 151.40 l
+507.76 42.59 m
+0 150.12 l
 o
 np
-544.56 41.31 m
-0 151.40 l
+544.68 42.59 m
+0 150.12 l
 o
 1.07 setlinewidth
 [] 0 setdash
 np
-407.32 53.93 m
-163.20 0 l
+408.07 55.10 m
+162.45 0 l
 o
 np
-407.32 74.96 m
-163.20 0 l
+408.07 75.95 m
+162.45 0 l
 o
 np
-407.32 95.98 m
-163.20 0 l
+408.07 96.80 m
+162.45 0 l
 o
 np
-407.32 117.01 m
-163.20 0 l
+408.07 117.65 m
+162.45 0 l
 o
 np
-407.32 138.04 m
-163.20 0 l
+408.07 138.50 m
+162.45 0 l
 o
 np
-407.32 159.06 m
-163.20 0 l
+408.07 159.35 m
+162.45 0 l
 o
 np
-407.32 180.09 m
-163.20 0 l
+408.07 180.20 m
+162.45 0 l
 o
 np
-414.74 41.31 m
-0 151.40 l
+415.45 42.59 m
+0 150.12 l
 o
 np
-451.83 41.31 m
-0 151.40 l
+452.37 42.59 m
+0 150.12 l
 o
 np
-488.92 41.31 m
-0 151.40 l
+489.30 42.59 m
+0 150.12 l
 o
 np
-526.01 41.31 m
-0 151.40 l
+526.22 42.59 m
+0 150.12 l
 o
 np
-563.10 41.31 m
-0 151.40 l
+563.14 42.59 m
+0 150.12 l
 o
 /bg { 0.3490 0.3490 0.3490 srgb } def
-414.74 44.47 42.84 18.92 r p2
-414.74 65.49 32.46 18.92 r p2
-414.74 86.52 22.73 18.92 r p2
-414.74 107.55 13.50 18.92 r p2
-414.74 128.57 2.23 18.92 r p2
-414.74 149.60 0.00 18.92 r p2
-414.74 170.63 0.00 18.92 r p2
+415.45 45.72 42.64 18.76 r p2
+415.45 66.57 32.31 18.76 r p2
+415.45 87.42 22.62 18.76 r p2
+415.45 108.27 13.44 18.76 r p2
+415.45 129.12 2.22 18.76 r p2
+415.45 149.97 0.00 18.76 r p2
+415.45 170.82 0.00 18.76 r p2
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
@@ -1232,15 +1195,15 @@ o
 0.00 0.00 864.00 432.00 cl
 /Font1 findfont 9 s
 0.3020 0.3020 0.3020 srgb
-402.39 50.70 (CompressionalSonicMS) 1 0 t
-402.39 71.73 (ShearSonicMS) 1 0 t
-402.39 92.75 (BulkDensityGCm3) 1 0 t
-358.37 113.78 (Or) 0 ta
+403.14 51.87 (CompressionalSonicMS) 1 0 t
+403.14 72.72 (ShearSonicMS) 1 0 t
+403.14 93.57 (BulkDensityGCm3) 1 0 t
+359.12 114.42 (Or) 0 ta
 0.135 (ientation) tb gr
-402.39 134.81 (Group) 1 0 t
-309.86 155.83 (ConfiningPressureMP) 0 ta
+403.14 135.27 (Group) 1 0 t
+310.61 156.12 (ConfiningPressureMP) 0 ta
 -0.360 (a) tb gr
-337.87 176.86 (P) 0 ta
+338.62 176.97 (P) 0 ta
 -0.450 (eakStressMP) tb
 -0.360 (a) tb gr
 0.00 0.00 864.00 432.00 cl
@@ -1252,31 +1215,31 @@ o
 1 setlinejoin
 10.00 setmiterlimit
 np
-404.58 53.93 m
+405.33 55.10 m
 2.74 0 l
 o
 np
-404.58 74.96 m
+405.33 75.95 m
 2.74 0 l
 o
 np
-404.58 95.98 m
+405.33 96.80 m
 2.74 0 l
 o
 np
-404.58 117.01 m
+405.33 117.65 m
 2.74 0 l
 o
 np
-404.58 138.04 m
+405.33 138.50 m
 2.74 0 l
 o
 np
-404.58 159.06 m
+405.33 159.35 m
 2.74 0 l
 o
 np
-404.58 180.09 m
+405.33 180.20 m
 2.74 0 l
 o
 0.00 0.00 864.00 432.00 cl
@@ -1296,34 +1259,34 @@ o
 1 setlinejoin
 10.00 setmiterlimit
 np
-414.74 38.57 m
+415.45 39.85 m
 0 2.74 l
 o
 np
-451.83 38.57 m
+452.37 39.85 m
 0 2.74 l
 o
 np
-488.92 38.57 m
+489.30 39.85 m
 0 2.74 l
 o
 np
-526.01 38.57 m
+526.22 39.85 m
 0 2.74 l
 o
 np
-563.10 38.57 m
+563.14 39.85 m
 0 2.74 l
 o
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 /Font1 findfont 9 s
 0.3020 0.3020 0.3020 srgb
-419.31 31.81 (0.00) 1 45.00 t
-456.40 31.81 (0.25) 1 45.00 t
-493.49 31.81 (0.50) 1 45.00 t
-530.58 31.81 (0.75) 1 45.00 t
-567.67 31.81 (1.00) 1 45.00 t
+420.02 33.09 (0.00) 1 45.00 t
+456.94 33.09 (0.25) 1 45.00 t
+493.86 33.09 (0.50) 1 45.00 t
+530.79 33.09 (0.75) 1 45.00 t
+567.71 33.09 (1.00) 1 45.00 t
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
@@ -1340,7 +1303,7 @@ o
 0.00 0.00 864.00 432.00 cl
 /Font1 findfont 13 s
 0 0 0 srgb
-407.32 201.19 (PR w/o Residual Stress) 0 0 t
+408.07 201.19 (PR w/o Residual Stress) 0 0 t
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
 0.00 0.00 864.00 432.00 cl
