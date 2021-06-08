@@ -261,7 +261,7 @@ Setup the analysis
 
 ```{r}
 # setup model structures
-vmodel = vgm(0, "Sph", 15E3)
+vmodel = vgm(0, "Sph", 25E3)
 vmodel = vgm(0, "Sph", 50E3)
 vmodel = vgm(0, "Lin", 10E3, add.to=vmodel)
 vmodel = vgm(0, "Nug", 0, add.to=vmodel)
@@ -287,14 +287,13 @@ lmc_in = make_lmc_input(g, vmodel)
 res <- fit_linear_model_of_coregionalization(
   lmc_in$azimuth, lmc_in$dip, lmc_in$nlag, lmc_in$tail, 
   lmc_in$head, lmc_in$gam, lmc_in$model, lmc_in$vartype,
-  weighting_method=6,maxiterations = 6000
+  weighting_method=6, maxiterations=5000
   )
 
 g = assign_lmc_sills(g, res$sills)
 
 plot(v,g)
 ```
-
 Save model when acceptable
 
 ```{r}
@@ -303,18 +302,5 @@ names(norm_objs) = c('sv','pp','sh')
 
 vgm_obj = list(v,g,lmc_in, norm_objs)
 names(vgm_obj) = c('v','g','lmc_in','norm_objs')
-saveRDS(vgm_obj, '20200508_stress_vgmobj.rds')
-```
-
-Debug LMC function
-
-```{r}
-azimuth = lmc_in$azimuth
-dip = lmc_in$dip
-nlag = lmc_in$nlag
-tail = lmc_in$tail
-head = lmc_in$head
-gam = lmc_in$gam
-model = lmc_in$model
-vartype = lmc_in$vartype
+saveRDS(vgm_obj, '../output/stress_vgmobj.rds')
 ```
