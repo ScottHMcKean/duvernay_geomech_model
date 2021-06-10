@@ -5,9 +5,12 @@ date: "05/02/2021"
 output: html_document
 ---
 
-# Stress Cosimulation
+# Stress Geostatistical Model Generation
 
-This document goes over development of a LMC and cosimulation of stress data
+This notebook covers the first of two geostatistical model generation
+processes that are linked together by an exhaustive secondary variable (vertical
+stress). This notebook covers data loads from previous notebooks, exploratory
+variography, and development of a linear model of coregionalization.
 
 ```{r setup, include=FALSE}
 # geospatial packages
@@ -24,9 +27,7 @@ library(bestNormalize)
 # data munging & plotting
 library(tidyverse)
 library(viridis)
-
-source('../R/geospatial.R')
-source('../R/geostats.R')
+library(duvernaygeomechmodel)
 ```
 
 ## Load spatial dataframes
@@ -56,10 +57,8 @@ shmin_sf = shmin_sf %>%
 # Variography
 
 This section investigates the normality, anisotropy, and variography of each of 
-the stress variables. 
-
-Since Sequential Gaussian Cosimulation is used, we transform variables to normal 
-distributions using the ordered quantile technique 
+the stress variables. Since Sequential Gaussian Cosimulation is used, we 
+transform variables to normal distributions using the ordered quantile technique 
 
 ## Descriptive Variography - SV
 
@@ -92,13 +91,15 @@ sv_v_dir = variogram(svgrad_norm~1, sv_sp, alpha=c(0,22,45,67,90,112,135,157))
 plot(sv_v_dir)
 
 # check for geometric anisotropy
-ggvariogram_map(
+ggvarmap = ggvariogram_map(
   formula = svgrad_norm~1, 
   sp_df = sv_sp,
   cutoff = 100E3, 
   width = 5E3,
   threshold = 500
   )
+
+ggsave('../output/ggvarmap_sv.pdf', ggvarmap)
 ```
 
 ## Variogram Modelling - SV
@@ -107,9 +108,6 @@ Vertical stress shows geometric anisotropy with a major axis
 direction of 157 degrees, and a trend in the shorter direction. Because we are 
 trying to fit an LMC, we try to keep variogram structures simple. A anisotropy 
 of 75% reflects the variogram map nicely. Good enough to start.
-
-We use only spherical and nugget models to keep things simple. To make a valid
-model, every model should have one nugget and two spherical variograms.
 
 ```{r}
 sv_v = variogram(svgrad_norm~1, sv_sp, alpha=c(67,157)) 
@@ -124,7 +122,7 @@ plot(sv_v, sv_vgm)
 Looking at pore pressure, there is an outlier in the data because two points are
 way above the duvernay. A couple observations:
 - The low pressures towards the east are creating a binomial distribution but I 
-don't think they should be throw out.
+don't think they should be thrown out.
 - The data is quite skewed (-0.82) with heavy tails (k=3.6)
 - The variograms are awful. I honestly think a pure nugget effect might be the
 best way to look at them!?
@@ -161,15 +159,16 @@ pp_v_dir = variogram(ppgrad_norm~1, pp_sp, alpha=c(0,22,45,67,90,112,135,157))
 plot(pp_v_dir)
 
 # check for geometric anisotropy
-ggvariogram_map(
+ggvarmap = ggvariogram_map(
   formula = ppgrad_norm~1, 
   sp_df = pp_sp,
   cutoff = 100E3, 
   width = 5E3,
   threshold = 1
   )
-```
 
+ggsave('../output/ggvarmap_pp.pdf', ggvarmap)
+```
 ## Variogram Modelling - PP
 
 A uninformative variogram here might be best solution. We use a spherical variogram with a short range (10 km) to fit our first observation. We need a model, so this is a pretty broad assumption. The other alternative is full nugget, but that simply imparts random noise and isn't all that useful for cosimulation.
@@ -178,7 +177,7 @@ A uninformative variogram here might be best solution. We use a spherical variog
 pp_v = variogram(ppgrad_norm~1, pp_sp, alpha=c(67,157))
 
 pp_vgm = vgm(0.1, "Sph", 50E3, nugget = 0.1)
-pp_vgm = vgm(0.85, "Sph", 15E3, anis=c(67, 0.75), add.to=pp_vgm)
+pp_vgm = vgm(0.85, "Sph", 10E3, anis=c(67, 0.75), add.to=pp_vgm)
 plot(pp_v, pp_vgm)
 
 pp_vgm
@@ -218,13 +217,15 @@ sh_v_dir = variogram(shgrad_norm~1, sh_sp, alpha=c(0,22,45,67,90,112,135,157))
 plot(sh_v_dir)
 
 # check for geometric anisotropy
-ggvariogram_map(
+ggvarmap = ggvariogram_map(
   formula = shgrad_norm~1, 
   sp_df = sh_sp,
   cutoff = 100E3, 
   width = 5E3,
   threshold = 1
   )
+
+ggsave('../output/ggvarmap_sh.pdf', ggvarmap)
 ```
 
 ## Variogram Modelling - SV
@@ -248,7 +249,8 @@ is that we have heterotopic data underpinned by an exhaustive secondary variable
 and need to quantify the uncertainty in our stress measurements, and how that 
 compares to our model uncertainty.
 
-We first try with two variables to develop intuition about cross-variogram fitting
+We use a linear short range model with nugget and two spherical variograms. This 
+seems to provide a relatively okay quantification of our sparse data.
 
 ```{r}
 # make a prediction grid
@@ -257,50 +259,62 @@ gridded(st_grid) <- TRUE
 st_grid <- as(st_grid, "SpatialPixels")
 ```
 
-Setup the analysis 
+Setup the analysis in gstat for the LMC fitting.
 
 ```{r}
 # setup model structures
-vmodel = vgm(0, "Sph", 25E3)
-vmodel = vgm(0, "Sph", 50E3)
+vmodel = vgm(0, "Sph", 20E3)
+vmodel = vgm(0, "Sph", 40E3, add.to=vmodel)
 vmodel = vgm(0, "Lin", 10E3, add.to=vmodel)
 vmodel = vgm(0, "Nug", 0, add.to=vmodel)
 
 # setup problem in gstat
 g = gstat(id='sv', formula=svgrad_norm~1, data=sv_sp, beta=0, nmax=50, model=vmodel)
-g = gstat(g, id='sh', formula=shgrad_norm~1, data=sh_sp, beta=0, nmax=50, model=vmodel)
+g = gstat(g, id='shmin', formula=shgrad_norm~1, data=sh_sp, beta=0, nmax=50, model=vmodel)
 g = gstat(g, id='pp', formula = ppgrad_norm~1, data=pp_sp, beta=0, nmax=50, model=vmodel)
-g = gstat(g, id=c('sv','sh'), beta=0, nmax=50, model=vmodel)
+g = gstat(g, id=c('sv','shmin'), beta=0, nmax=50, model=vmodel)
 g = gstat(g, id=c('sv','pp'), beta=0, nmax=50, model=vmodel)
-g = gstat(g, id=c('sh','pp'), beta=0, nmax=50, model=vmodel)
+g = gstat(g, id=c('shmin','pp'), beta=0, nmax=50, model=vmodel)
 
 # make variogram
 v = variogram(g, cressie=TRUE)
 ```
-Setup LMC simulated annealing problem and run the LMC algo
+Fit the linear model of coregionalization. Since the random initiation point of
+the model governs the outcome, a seed is set to fix the random number generator
+and allow reproducible results. We iterate from 1 to 50 to find a model to
+visually minimizes the loss along the SV variogram while providing reasonable
+fits to PP and SH. A single model is carried forward into cosimulation.
+
+Seeds with reasonable fits (+ indicates preferred): 
+1, 2, 7, 8, 15, 16, 22, 23+, 27, 30, 40, 46
 
 ```{r}
 # setup lmc problem
+set.seed(23)
 lmc_in = make_lmc_input(g, vmodel)
 
 # run the lmc algorithm
 res <- fit_linear_model_of_coregionalization(
   lmc_in$azimuth, lmc_in$dip, lmc_in$nlag, lmc_in$tail, 
   lmc_in$head, lmc_in$gam, lmc_in$model, lmc_in$vartype,
-  weighting_method=6, maxiterations=5000
+  weighting_method=6
   )
 
 g = assign_lmc_sills(g, res$sills)
 
 plot(v,g)
 ```
-Save model when acceptable
+Save variogram + gstat object for simulation
 
 ```{r}
 norm_objs = list(sv_norm, pp_norm, sh_norm)
 names(norm_objs) = c('sv','pp','sh')
 
-vgm_obj = list(v,g,lmc_in, norm_objs)
-names(vgm_obj) = c('v','g','lmc_in','norm_objs')
+data_objs = list(sv_sp, pp_sp, sh_sp)
+names(data_objs) = c('sv','pp','sh')
+
+vgm_obj = list(v,g,lmc_in, norm_objs, data_objs)
+names(vgm_obj) = c('v','g','lmc_in','norm_objs', 'data_objs')
 saveRDS(vgm_obj, '../output/stress_vgmobj.rds')
+```
 ```

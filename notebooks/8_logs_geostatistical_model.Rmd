@@ -7,8 +7,9 @@ output: html_document
 
 # Stress Cosimulation
 
-This document goes over development of a LMC and cosimulation of the logs, 
-conditioned on the vertical stress exhaustive data
+This document goes over development of a LMC and cosimulation of the log data, 
+conditioned on the vertical stress exhaustive data. Similar to the previous
+notebook that addressed stress data.
 
 ```{r setup, include=FALSE}
 # geospatial packages
@@ -65,8 +66,8 @@ sv_sp = sv_sp[!is.na(sv_sp$svgrad_kpa_m),]
 sv_norm = bestNormalize::orderNorm(sv_sp$svgrad_kpa_m)
 sv_sp$svgrad_norm = sv_sp$svgrad_norm = sv_norm$x.t
 sv_v = variogram(svgrad_norm~1, sv_sp)
-sv_vgm = vgm(0.69, "Sph", 50E3, nugget = 0.01)
-sv_vgm = vgm(0.3, "Sph", 15E3, anis=c(67, 0.75), add.to=sv_vgm)
+sv_vgm = vgm(0.8, "Sph", 40E3, nugget = 0.01)
+sv_vgm = vgm(0.2, "Sph", 10E3, anis=c(67, 0.75), add.to=sv_vgm)
 plot(sv_v, sv_vgm)
 ```
 ## Descriptive Variography - RHOB / Shale
@@ -87,12 +88,12 @@ moments::skewness(shale_sf$rhob_mean)
 moments::kurtosis(shale_sf$rhob_mean)
 
 # normal transform
-rhob_norm = bestNormalize::orderNorm(shale_rhob$rhob_mean)
-shale_rhob$rhob_norm = rhob_norm$x.t
+shale_rhob_norm = bestNormalize::orderNorm(shale_rhob$rhob_mean)
+shale_rhob$rhob_norm = shale_rhob_norm$x.t
 ggdensity(as.data.frame(shale_rhob), x='rhob_norm') +
   stat_overlay_normal_density(color='red', linetype='dashed')
-moments::skewness(rhob_norm$x.t)
-moments::kurtosis(rhob_norm$x.t)
+moments::skewness(shale_rhob_norm$x.t)
+moments::kurtosis(shale_rhob_norm$x.t)
 
 # what is the global variance (should be 1...)
 var(shale_rhob$rhob_norm)
@@ -106,7 +107,7 @@ rhob_v_dir = variogram(rhob_norm~1, shale_rhob, alpha=c(0,22,45,67,90,112,135,15
 plot(rhob_v_dir)
 
 # check for geometric anisotropy
-ggvariogram_map(
+ggvarmap = ggvariogram_map(
   formula = rhob_norm~1, 
   sp_df = shale_rhob,
   cutoff = 100E3, 
@@ -114,14 +115,14 @@ ggvariogram_map(
   threshold = 1
   )
 
-shale_rhob_vgm = vgm(0.8, "Sph", 16E3, nugget = 0.2)
-plot(shale_rhob_v, shale_rhob_vgm)
+ggsave('../output/ggvarmap_rhob_shale.pdf', ggvarmap)
 ```
 
 ## Descriptive Variography - RHOB / Carb
 
 - The carbonate density appears to be almost all nugget (60% of variance?)
 - Some short range predictability is noted
+- Some anisotropy is noted
 
 ```{r}
 carb_rhob = carb_sp[!is.na(carb_sp$rhob_mean),]
@@ -134,35 +135,34 @@ moments::skewness(carb_sf$rhob_mean)
 moments::kurtosis(carb_sf$rhob_mean)
 
 # normal transform
-rhob_norm = bestNormalize::orderNorm(carb_sp$rhob_mean)
-carb_sf$rhob_norm = carb_sp$rhob_norm = rhob_norm$x.t
-ggdensity(carb_sf, x='rhob_norm') +
+carb_rhob_norm = bestNormalize::orderNorm(carb_rhob$rhob_mean)
+carb_rhob$rhob_norm = carb_rhob_norm$x.t
+ggdensity(as.data.frame(carb_rhob), x='rhob_norm') +
   stat_overlay_normal_density(color='red', linetype='dashed')
-moments::skewness(rhob_norm$x.t)
-moments::kurtosis(rhob_norm$x.t)
+moments::skewness(carb_rhob_norm$x.t)
+moments::kurtosis(carb_rhob_norm$x.t)
 
 # what is the global variance (should be 1...)
-var(carb_sp$rhob_norm)
+var(carb_rhob$rhob_norm)
 
 # make an experimental variogram
-carb_rhob_v = variogram(rhob_norm~1, carb_sp)
+carb_rhob_v = variogram(rhob_norm~1, carb_rhob)
 plot(carb_rhob_v)
 
 # check directional variograms
-rhob_v_dir = variogram(rhob_norm~1, carb_sp, alpha=c(0,22,45,67,90,112,135,157))
+rhob_v_dir = variogram(rhob_norm~1, carb_rhob, alpha=c(0,22,45,67,90,112,135,157))
 plot(rhob_v_dir)
 
 # check for geometric anisotropy
 ggvariogram_map(
   formula = rhob_norm~1, 
-  sp_df = carb_sp,
+  sp_df = carb_rhob,
   cutoff = 100E3, 
   width = 5E3,
   threshold = 1
   )
 
-carb_rhob_vgm = vgm(0.4, "Sph", 16E3, nugget = 0.6)
-plot(carb_rhob_v, carb_rhob_vgm)
+ggsave('../output/ggvarmap_rhob_carb.pdf', ggvarmap)
 ```
 ## Descriptive Variography - DTC / Shale
 
@@ -182,12 +182,12 @@ moments::skewness(shale_dtc$dtc_mean)
 moments::kurtosis(shale_dtc$dtc_mean)
 
 # normal transform
-dtc_norm = bestNormalize::orderNorm(shale_dtc$dtc_mean)
-shale_dtc$dtc_norm = dtc_norm$x.t
+shale_dtc_norm = bestNormalize::orderNorm(shale_dtc$dtc_mean)
+shale_dtc$dtc_norm = shale_dtc_norm$x.t
 ggdensity(as.data.frame(shale_dtc), x='dtc_norm') +
   stat_overlay_normal_density(color='red', linetype='dashed')
-moments::skewness(rhob_norm$x.t)
-moments::kurtosis(rhob_norm$x.t)
+moments::skewness(shale_dtc_norm$x.t)
+moments::kurtosis(shale_dtc_norm$x.t)
 
 # what is the global variance (should be 1...)
 var(shale_dtc$dtc_norm)
@@ -209,8 +209,7 @@ ggvariogram_map(
   threshold = 1
   )
 
-shale_dtc_vgm = vgm(0.6, "Sph", 40E3, nugget = 0.4)
-plot(shale_dtc_v, shale_dtc_vgm)
+ggsave('../output/ggvarmap_dtc_shale.pdf', ggvarmap)
 ```
 
 ## Descriptive Variography - DTC / Carb
@@ -231,12 +230,12 @@ moments::skewness(carb_dtc$dtc_mean)
 moments::kurtosis(carb_dtc$dtc_mean)
 
 # normal transform
-dtc_norm = bestNormalize::orderNorm(carb_dtc$dtc_mean)
-carb_dtc$dtc_norm = dtc_norm$x.t
+carb_dtc_norm = bestNormalize::orderNorm(carb_dtc$dtc_mean)
+carb_dtc$dtc_norm = carb_dtc_norm$x.t
 ggdensity(as.data.frame(carb_dtc), x='dtc_norm') +
   stat_overlay_normal_density(color='red', linetype='dashed')
-moments::skewness(dtc_norm$x.t)
-moments::kurtosis(dtc_norm$x.t)
+moments::skewness(carb_dtc_norm$x.t)
+moments::kurtosis(carb_dtc_norm$x.t)
 
 # what is the global variance (should be 1...)
 var(carb_dtc$dtc_norm)
@@ -258,8 +257,7 @@ ggvariogram_map(
   threshold = 1
   )
 
-carb_dtc_vgm = vgm(0.65, "Sph", 16E3, nugget = 0.35)
-plot(carb_dtc_v, carb_dtc_vgm)
+ggsave('../output/ggvarmap_dtc_carb.pdf', ggvarmap)
 ```
 
 ## Descriptive Variography - DTS / Shale
@@ -280,12 +278,12 @@ moments::skewness(shale_dts$dts_mean)
 moments::kurtosis(shale_dts$dts_mean)
 
 # normal transform
-dts_norm = bestNormalize::orderNorm(shale_dts$dts_mean)
-shale_dts$dts_norm = dts_norm$x.t
+shale_dts_norm = bestNormalize::orderNorm(shale_dts$dts_mean)
+shale_dts$dts_norm = shale_dts_norm$x.t
 ggdensity(as.data.frame(shale_dts), x='dts_norm') +
   stat_overlay_normal_density(color='red', linetype='dashed')
-moments::skewness(rhob_norm$x.t)
-moments::kurtosis(rhob_norm$x.t)
+moments::skewness(shale_dts_norm$x.t)
+moments::kurtosis(shale_dts_norm$x.t)
 
 # what is the global variance (should be 1...)
 var(shale_dts$dts_norm)
@@ -307,8 +305,7 @@ ggvariogram_map(
   threshold = 1
   )
 
-shale_dts_vgm = vgm(0.75, "Sph", 40E3, nugget = 0.25)
-plot(shale_dts_v, shale_dts_vgm)
+ggsave('../output/ggvarmap_dts_shale.pdf', ggvarmap)
 ```
 
 ## Descriptive Variography - dts / Carb
@@ -330,12 +327,12 @@ moments::skewness(carb_dts$dts_mean)
 moments::kurtosis(carb_dts$dts_mean)
 
 # normal transform
-dts_norm = bestNormalize::orderNorm(carb_dts$dts_mean)
-carb_dts$dts_norm = dts_norm$x.t
+carb_dts_norm = bestNormalize::orderNorm(carb_dts$dts_mean)
+carb_dts$dts_norm = carb_dts_norm$x.t
 ggdensity(as.data.frame(carb_dts), x='dts_norm') +
   stat_overlay_normal_density(color='red', linetype='dashed')
-moments::skewness(dts_norm$x.t)
-moments::kurtosis(dts_norm$x.t)
+moments::skewness(carb_dts_norm$x.t)
+moments::kurtosis(carb_dts_norm$x.t)
 
 # what is the global variance (should be 1...)
 var(carb_dts$dts_norm)
@@ -357,8 +354,7 @@ ggvariogram_map(
   threshold = 1
   )
 
-carb_dts_vgm = vgm(0.65, "Sph", 16E3, nugget = 0.35)
-plot(carb_dts_v, carb_dts_vgm)
+ggsave('../output/ggvarmap_dts_carb.pdf', ggvarmap)
 ```
 ## Cosimulation 
 
@@ -377,19 +373,22 @@ gridded(st_grid) <- TRUE
 st_grid <- as(st_grid, "SpatialPixels")
 ```
 
-For the logs we have
+For the logs we have SV, RHOB, DTC, DTS. SV is exhaustive and the same for both 
+carbonate and shale (the exhaustive link raster). RHOB, DTC, DTS are simulated 
+separately for carbonate and shale
 
-SV, RHOB, DTC, DTS
-SV is exhaustive and the same for both carbonate and shale (the exhaustive link raster)
-RHOB, DTC, DTS are simulated separately for carbonate and shale
+We use the same structures as employed for the stress model for consistency,
+despite some improvement being seen from adding a mid-range exponential model 
+and adding more variograms. We believe this increases the parsimony of the approach
+and reduces bias, given all the other uncertainties we are addressing.
 
 Shale first 
+
 ```{r}
 # setup model structures
 vmodel = vgm(0, "Sph", 40E3)
-vmodel = vgm(0, "Sph", 15E3)
-vmodel = vgm(0, "Lin", 5E3, add.to=vmodel)
-vmodel = vgm(0, "Exp", 30E3, add.to=vmodel)
+vmodel = vgm(0, "Sph", 20E3, add.to=vmodel)
+vmodel = vgm(0, "Lin", 10E3, add.to=vmodel)
 vmodel = vgm(0, "Nug", 0, add.to=vmodel)
 
 # setup problem in gstat
@@ -404,27 +403,100 @@ g = gstat(g, id=c('rhob','dtc'), model=vmodel, beta=0, nmax=50)
 g = gstat(g, id=c('rhob','dts'), model=vmodel, beta=0, nmax=50)
 g = gstat(g, id=c('dtc','dts'), model=vmodel, beta=0, nmax=50)
 
-v = variogram(g)
-
-plot(v,g)
+v = variogram(g, cressie=TRUE)
 ```
+The ad-hoc fitting process here focuses on the following parameters in order:
+1. SV (exhaustive)
+2. RHOB
+3. VP (DTC)
+4. VS (DTS)
+5. Cross-variograms
+
+Seeds with reasonable fits (+ indicates preferred): 
+1, 4, 5, 14, 15, 17, 21, 25, 31+, 35, 40, 50
+
 ```{r}
 # setup lmc problem
+set.seed(31)
 lmc_in = make_lmc_input(g, vmodel)
-gam = lmc_in$gam
+
 # run the lmc algorithm
 res <- fit_linear_model_of_coregionalization(
   lmc_in$azimuth, lmc_in$dip, lmc_in$nlag, lmc_in$tail, 
   lmc_in$head, lmc_in$gam, lmc_in$model, vartype=lmc_in$vartype,
-  weighting_method=1
+  weighting_method=6
   )
 
 g = assign_lmc_sills(g, res$sills)
 
 plot(v,g)
 ```
+Save geostatistical models
 
 ```{r}
-pred = predict(g, st_grid, nsim=10)
-plot(pred)
+norm_objs = list(sv_norm, shale_rhob_norm, shale_dtc_norm, shale_dts_norm)
+names(norm_objs) = c('sv','rhob','dtc', 'dts')
+
+data_objs = list(sv_sp, shale_rhob, shale_dtc, shale_dts)
+names(data_objs) = c('sv','rhob','dtc','dts')
+
+vgm_obj = list(v,g,lmc_in, norm_objs, data_objs)
+names(vgm_obj) = c('v','g','lmc_in','norm_objs', 'data_objs')
+saveRDS(vgm_obj, '../output/shale_logs_vgmobj.rds')
+```
+
+Carbonate second 
+
+```{r}
+# setup model structures
+vmodel = vgm(0, "Sph", 40E3)
+vmodel = vgm(0, "Sph", 20E3, add.to=vmodel)
+vmodel = vgm(0, "Lin", 10E3, add.to=vmodel)
+vmodel = vgm(0, "Nug", 0, add.to=vmodel)
+
+# setup problem in gstat
+g = gstat(id='sv', formula=svgrad_norm~1, data=sv_sp, beta=0, nmax=50, model=vmodel)
+g = gstat(g, id='rhob', formula=rhob_norm~1, data=carb_rhob, beta=0, nmax=50, model=vmodel)
+g = gstat(g, id='dtc', formula = dtc_norm~1, data=carb_dtc, beta=0, nmax=50, model=vmodel)
+g = gstat(g, id='dts', formula = dts_norm~1, data=carb_dts, beta=0, nmax=50, model=vmodel)
+g = gstat(g, id=c('sv','rhob'), model=vmodel, beta=0, nmax=50)
+g = gstat(g, id=c('sv','dtc'), model=vmodel, beta=0, nmax=50)
+g = gstat(g, id=c('sv','dts'), model=vmodel, beta=0, nmax=50)
+g = gstat(g, id=c('rhob','dtc'), model=vmodel, beta=0, nmax=50)
+g = gstat(g, id=c('rhob','dts'), model=vmodel, beta=0, nmax=50)
+g = gstat(g, id=c('dtc','dts'), model=vmodel, beta=0, nmax=50)
+
+v = variogram(g, cressie=TRUE)
+```
+Seeds with reasonable fits (+ indicates preferred): 
+2+, 3, 10, 20, 24, 25, 34, 36
+
+```{r}
+# setup lmc problem
+set.seed(2)
+lmc_in = make_lmc_input(g, vmodel)
+
+# run the lmc algorithm
+res <- fit_linear_model_of_coregionalization(
+  lmc_in$azimuth, lmc_in$dip, lmc_in$nlag, lmc_in$tail, 
+  lmc_in$head, lmc_in$gam, lmc_in$model, vartype=lmc_in$vartype,
+  weighting_method=6
+  )
+
+g = assign_lmc_sills(g, res$sills)
+
+plot(v,g)
+```
+Save geostatistical models
+
+```{r}
+norm_objs = list(sv_norm, carb_rhob_norm, carb_dtc_norm, carb_dts_norm)
+names(norm_objs) = c('sv','rhob','dtc', 'dts')
+
+data_objs = list(sv_sp, carb_rhob, carb_dtc, carb_dts)
+names(data_objs) = c('sv','rhob','dtc','dts')
+
+vgm_obj = list(v,g,lmc_in, norm_objs, data_objs)
+names(vgm_obj) = c('v','g','lmc_in','norm_objs', 'data_objs')
+saveRDS(vgm_obj, '../output/carb_logs_vgmobj.rds')
 ```

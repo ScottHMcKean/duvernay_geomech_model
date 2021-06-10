@@ -1,0 +1,101 @@
+---
+title: "Geostatistics CoSimulation"
+author: "Scott McKean"
+date: "05/02/2021"
+output: html_document
+---
+
+# Geostatistical Cosimulation
+
+This document goes over development of a LMC and cosimulation of stress data
+
+```{r setup, include=FALSE}
+library(duvernaygeomechmodel)
+```
+
+## Load spatial dataframes
+
+```{r cars}
+study_bounds = st_read('../data/study_dv_bounds.GeoJSON')
+study_raster = raster::raster('../data/study_raster.tif')
+sv_sf = st_read('../data/sv_sf.GeoJSON') %>%
+  drop_na()
+
+# make a prediction grid
+st_grid <- rasterToPoints(study_raster, spatial = TRUE)
+gridded(st_grid) <- TRUE
+st_grid <- as(st_grid, "SpatialPixels")
+```
+Load v, g, and lmc_in values
+
+```{r}
+vgm_in = readRDS('../output/carb_logs_vgmobj.rds')
+v = vgm_in$v
+g = vgm_in$g
+lmc_in = vgm_in$lmc_in
+norm_objs = vgm_in$norm_objs
+data_objs = vgm_in$data_objs
+```
+
+Make predictions
+
+```{r}
+pred_spdf = predict(g, st_grid, nsim=100)
+```
+Back transform variables via BestNormalize package + objs
+
+```{r}
+sv_invert_pred <- function(x){
+  predict(norm_objs$sv, newdata=x, inverse=TRUE)
+}
+
+rhob_invert_pred <- function(x){
+  predict(norm_objs$rhob, newdata=x, inverse=TRUE)
+}
+
+dtc_invert_pred <- function(x){
+  predict(norm_objs$dtc, newdata=x, inverse=TRUE)
+}
+
+dts_invert_pred <- function(x){
+  predict(norm_objs$dts, newdata=x, inverse=TRUE)
+}
+
+# invert from normalized values
+trans = pred_spdf
+trans@data <- pred_spdf@data %>%
+  mutate(across(contains('sv'),sv_invert_pred)) %>%
+  mutate(across(contains('rhob'),rhob_invert_pred)) %>%
+  mutate(across(contains('dtc'),dtc_invert_pred)) %>%
+  mutate(across(contains('dts'),dts_invert_pred))
+```
+
+Summary statistics
+
+```{r}
+# get rowwise summary statistics for the values (for mapping)
+summary = trans@data %>%
+  rowwise() %>%
+  summarize(
+    sv_mean = mean(c_across(contains('sv'))),
+    sv_sd = sd(c_across(contains('sv'))),
+    rhob_mean = mean(c_across(contains('rhob'))),
+    rhob_sd = sd(c_across(contains('rhob'))),
+    dtc_mean = mean(c_across(contains('dtc'))),
+    dtc_sd = sd(c_across(contains('dtc'))),
+    dts_mean = mean(c_across(contains('dts'))),
+    dts_sd = sd(c_across(contains('dts')))
+  ) %>%
+  mutate(x = pred_spdf@coords[,1]) %>%
+  mutate(y = pred_spdf@coords[,2])
+```
+
+Plots
+
+```{r}
+ggplot() +
+  geom_tile(data = summary, aes(x=x, y=y, fill = dtc_sd)) +
+  geom_sf(data = study_bounds, fill=NA, colour='yellow', size=1.5) +
+  coord_sf(datum=st_crs(26911)) +
+  theme_minimal()
+```

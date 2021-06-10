@@ -5,7 +5,7 @@ date: "05/02/2021"
 output: html_document
 ---
 
-# Stress Cosimulation
+# Geostatistical Cosimulation
 
 This document goes over development of a LMC and cosimulation of stress data
 
@@ -15,11 +15,13 @@ library(sf)
 library(gstat)
 library(raster)
 library(sp)
+library(duvernaygeomechmodel)
 ```
 
 ## Load spatial dataframes
 
 ```{r cars}
+study_bounds = st_read('../data/study_dv_bounds.GeoJSON')
 study_raster = raster::raster('../data/study_raster.tif')
 sv_sf = st_read('../data/sv_sf.GeoJSON') %>%
   drop_na()
@@ -32,23 +34,23 @@ st_grid <- as(st_grid, "SpatialPixels")
 Load v, g, and lmc_in values
 
 ```{r}
-vgm_in = readRDS('20200508_stress_vgmobj.rds')
+vgm_in = readRDS('../output/stress_vgmobj.rds')
 v = vgm_in$v
 g = vgm_in$g
 lmc_in = vgm_in$lmc_in
 norm_objs = vgm_in$norm_objs
+data_objs = vgm_in$data_objs
 ```
 
 Make predictions
 
-# run predict function --> spatialixelsdataframe
-# back transform normal value to real value using bestnorm package
-# run summaries over columns?! 
-# split dataframes ?!
-
 ```{r}
 pred_spdf = predict(g, st_grid, nsim=100)
+```
 
+Back transform variables
+
+```{r}
 sv_invert_pred <- function(x){
   predict(norm_objs$sv, newdata=x, inverse=TRUE)
 }
@@ -67,9 +69,13 @@ trans@data <- pred_spdf@data %>%
   mutate(across(contains('sv'),sv_invert_pred)) %>%
   mutate(across(contains('pp'),pp_invert_pred)) %>%
   mutate(across(contains('sh'),sh_invert_pred))
+```
 
+Summary statistics
+
+```{r}
 # get rowwise summary statistics for the values (for mapping)
-trans@data %>%
+summary = trans@data %>%
   rowwise() %>%
   summarize(
     sv_mean = mean(c_across(contains('sv'))),
@@ -78,9 +84,17 @@ trans@data %>%
     sh_sd = sd(c_across(contains('sh'))),
     pp_mean = mean(c_across(contains('pp'))),
     pp_sd = sd(c_across(contains('pp')))
-  )
+  ) %>%
+  mutate(x = pred_spdf@coords[,1]) %>%
+  mutate(y = pred_spdf@coords[,2])
+```
 
-# do machine learning predictions
-# select columns with a specific simulation?
-# 
+Plots
+
+```{r}
+ggplot() +
+  geom_tile(data = summary, aes(x=x, y=y, fill = pp_sd)) +
+  geom_sf(data = study_bounds, fill=NA, colour='yellow', size=1.5) +
+  coord_sf(datum=st_crs(26911)) +
+  theme_minimal()
 ```

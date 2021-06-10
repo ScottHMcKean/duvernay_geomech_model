@@ -66,6 +66,6 @@ ggplot(stiffness_df) +
   scale_color_discrete(name = 'Stiffness Model') +
   theme_minimal() +
   theme(legend.position = c(0.22, 0.85)) +
-  ggsave('stiffness_model_plot.eps', height = 6, width = 6)
-  ggsave('stiffness_model_plot.png', height = 6, width = 6)
+  ggsave('../output/stiffness_model_plot.eps', height = 6, width = 6)
+  ggsave('../output/stiffness_model_plot.png', height = 6, width = 6)
 ```
