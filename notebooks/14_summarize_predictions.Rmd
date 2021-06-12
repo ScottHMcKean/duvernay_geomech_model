@@ -1,0 +1,104 @@
+---
+title: "Predict with Model & Geostats"
+output: html_document
+---
+
+This notebook summarizes the model predictions. We try to answer the following:
+
+- What is the mean prediction from each model?
+- What is the uncertainity of each model?
+
+By each model we mean model & facies. 
+
+- We have three models from each feature set to help us evaluate model uncertainty,
+plus the bias and variance of each model
+- We have two facies to evaluate using the same model to evaluate facies uncertainty
+- We have 1000 geostatistical simulations to help us evaluate geostatistical uncertainty
+
+Uncertainty = mean model variance + 
+  different model uncertainty + 
+  facies uncertainty +
+  geostatistical uncertainty
+
+```{r setup}
+library(duvernaygeomechmodel)
+study_bounds = st_read('../data/study_dv_bounds.GeoJSON')
+study_raster = raster::raster('../data/study_raster.tif')
+```
+
+Load predictions from the previous notebook
+
+```{r}
+predictions = readRDS('../output/geostatistical_models/predictions.rds')
+rock_phys_pred = readRDS('../output/geostatistical_models/rock_phys_predictions.rds')
+```
+
+Get a list of models
+
+```{r}
+models = c()
+for (dir in list.dirs("../output/statistical_models/",recursive = FALSE)){
+    models = append(models, tail(str_split(dir,'/')[[1]],1))
+}
+# add rock physics into the mix
+models = models %>% append('rock_physics_ym') %>% append('rock_physics_pr')
+```
+Pick a feature set
+
+```{r}
+feat_sets = c("vp_rho", "vp_vs_rho", "dev_vp_rho", "dev_vp_vs_rho", 
+              "dev_conf_vp_rho", "dev_conf_vp_vs_rho")
+
+feat_set = "vp_vs_rho"
+```
+
+Subset predictions
+
+```{r}
+subset_predictions <- function(predictions, feat_set){
+  predictions@data <- predictions@data %>% select(contains(feat_set))
+  predictions
+}
+
+pred_feat_set = subset_predictions(predictions, "dev_conf_vp_vs_rho_glm")
+```
+
+Plot individual realizations
+
+```{r}
+sp_col_to_df <- function(spdf, col){
+  x = spdf@coords[,1]
+  y = spdf@coords[,2]
+  data = spdf@data[,col]
+  df_out = data.frame(x,y,data)
+  names(df_out) = c('x', 'y', col)
+  df_out
+}
+
+col = 'sigc.sim2'
+ggplot(data = sp_col_to_df(stress_abs, col)) +
+  geom_tile(aes(x=x,y=y, fill=get(col)))
+```
+
+Plot some predictions - looks as expected, with lots of variance when the 
+geostatistical variance is applied the models! This is good and will be very
+interesting to write up.
+
+```{r}
+colnames(predictions@data)
+
+col = 'carb.dev_conf_vp_rho_rf_br.sim3'
+
+ggplot(data = sp_col_to_df(predictions, col)) +
+  geom_tile(aes(x=x,y=y, fill=get(col)))
+
+```
+
+- Summarize predictions (mean + sd + CI90)
+
+```{r}
+
+```
+
+
+

@@ -23,8 +23,6 @@ library(duvernaygeomechmodel)
 ```{r cars}
 study_bounds = st_read('../data/study_dv_bounds.GeoJSON')
 study_raster = raster::raster('../data/study_raster.tif')
-sv_sf = st_read('../data/sv_sf.GeoJSON') %>%
-  drop_na()
 
 # make a prediction grid
 st_grid <- rasterToPoints(study_raster, spatial = TRUE)
@@ -34,7 +32,7 @@ st_grid <- as(st_grid, "SpatialPixels")
 Load v, g, and lmc_in values
 
 ```{r}
-vgm_in = readRDS('../output/stress_vgmobj.rds')
+vgm_in = readRDS('../output/geostatistical_models/stress_vgmobj.rds')
 v = vgm_in$v
 g = vgm_in$g
 lmc_in = vgm_in$lmc_in
@@ -45,7 +43,7 @@ data_objs = vgm_in$data_objs
 Make predictions
 
 ```{r}
-pred_spdf = predict(g, st_grid, nsim=100)
+pred_spdf = predict(g, st_grid, nsim=1000)
 ```
 
 Back transform variables
@@ -69,6 +67,8 @@ trans@data <- pred_spdf@data %>%
   mutate(across(contains('sv'),sv_invert_pred)) %>%
   mutate(across(contains('pp'),pp_invert_pred)) %>%
   mutate(across(contains('sh'),sh_invert_pred))
+
+saveRDS(trans, '../output/geostatistical_models/stress_pred_trans.rds')
 ```
 
 Summary statistics
@@ -87,6 +87,8 @@ summary = trans@data %>%
   ) %>%
   mutate(x = pred_spdf@coords[,1]) %>%
   mutate(y = pred_spdf@coords[,2])
+
+write_csv(summary, '../output/geostatistical_models/stress_summary_grid.csv')
 ```
 
 Plots
@@ -96,5 +98,6 @@ ggplot() +
   geom_tile(data = summary, aes(x=x, y=y, fill = pp_sd)) +
   geom_sf(data = study_bounds, fill=NA, colour='yellow', size=1.5) +
   coord_sf(datum=st_crs(26911)) +
-  theme_minimal()
+  theme_minimal() +
+  ggsave('../output/geostatistical_models/stress_pp_sd.pdf')
 ```

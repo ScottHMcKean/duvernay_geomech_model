@@ -1,0 +1,252 @@
+---
+title: "Predict with Model & Geostats"
+output: html_document
+---
+
+This notebook combines the statistical and geostatistical models to make a 
+prediction of geomechanical properties across the basin. Steps include:
+
+- Load stress realizations and log inputs realizations (carbonate + shale)
+- Estimate required stresses (confining + deviatoric) using stress polygon method
+- Load a model
+- Make predictions on each realization
+
+```{r setup}
+library(duvernaygeomechmodel)
+library(stars)
+study_bounds = st_read('../data/study_dv_bounds.GeoJSON')
+study_raster = raster::raster('../data/study_raster.tif')
+```
+
+Rasterize sv_sf for mbgs datum (needed for absolute stress conversion)
+
+```{r}
+sv_sf = st_read('../data/sv_sf.GeoJSON') %>% 
+  drop_na() %>% 
+  select(datum_mbgs)
+
+datum_mbgs = st_rasterize(sv_sf, template = st_as_stars(study_raster)) %>% 
+  as(., 'Raster')
+```
+
+Load stress realizations and log inputs realizations (carbonate + shale)
+
+```{r}
+stress = readRDS('../output/geostatistical_models/stress_pred_trans.rds')
+shale_logs = readRDS('../output/geostatistical_models/shale_logs_pred_trans.rds')
+carb_logs = readRDS('../output/geostatistical_models/carb_logs_pred_trans.rds')
+
+# make a predictions spdf to contain predictions
+predictions = stress
+predictions@data$x = predictions@coords[,1]
+predictions@data$y = predictions@coords[,2]
+predictions@data <- predictions@data %>% select(x,y)
+
+```
+
+Use Stress Polygon method to predict SHmax. 
+
+The polygon method requires an R-factor,
+which we can either set deterministically, or simulate it by drawing values from
+a distribution. Since we lack data to constrain this distribution, we use a 
+deterministic assumption of r = 0.62. This produces mean shmax values across the 
+simulations of 33.3 +/- 1 kpa/m, which is consistent with the value reported by
+Shen et al. (2019). Without further constraints, simulating the r-factor is
+roughly equivalent to adding random noise into the workflow and of little 
+interpretational benefit.
+
+We also calculate deviatoric and confining stress, assuming a Biot coefficient
+of 0.7. 
+
+```{r}
+r=0.62
+
+sim_vec = str_replace_all(
+  colnames(stress@data)[grepl("sv.*", colnames(stress@data))],
+  "sv.",""
+  )
+
+for (sim in sim_vec){
+  shmin = stress@data[, paste0('shmin.',sim)]
+  sv = stress@data[, paste0('sv.',sim)]
+  pp = stress@data[, paste0('pp.',sim)]
+  sigma_2 = ifelse(sv > shmin, sv, shmin)
+  sigma_3 = ifelse(sv > shmin, shmin, sv)
+  # stress polygon calc
+  sigma_1 = (sigma_3 * r - sigma_2)/(r - 1)
+  stress@data[, paste0("shmax.", sim)] <- sigma_1
+  # confining and deviatoric stress calcs
+  stress@data[, paste0("sigc.", sim)] <- (sigma_2 + sigma_3)/2 - 0.7 * pp
+  stress@data[, paste0("sigd.", sim)] <- sigma_1 - sigma_3
+}
+```
+
+Check mean stress values for calculated parameters
+
+```{r}
+# find mean & sd of shmax values
+shmax_summary = stress@data %>%
+  rowwise() %>%
+  summarize(
+    shmax_mean = mean(c_across(contains('shmax'))),
+    shmax_sd = sd(c_across(contains('shmax'))),
+    sigc_mean = mean(c_across(contains('sigc.'))),
+    sigc_sd = sd(c_across(contains('sigc.'))),
+    sigd_mean = mean(c_across(contains('sigd.'))),
+    sigd_sd = sd(c_across(contains('sigd.')))
+  )
+
+mean(shmax_summary$shmax_mean)
+sd(shmax_summary$shmax_mean)
+mean(shmax_summary$sigc_mean)
+sd(shmax_summary$sigc_sd)
+mean(shmax_summary$sigd_mean)
+sd(shmax_summary$sigd_sd)
+```
+Convert stresses to absolute values
+
+```{r}
+# functions to make absolute stress
+grad_to_abs_val <- function(x, datum_mbgs){
+  x * datum_mbgs@data@values / 1000
+}
+
+stress_abs = stress
+stress_abs@data <- stress@data %>%
+  mutate(across(contains('sv'), grad_to_abs_val, datum_mbgs)) %>%
+  mutate(across(contains('shmin'), grad_to_abs_val, datum_mbgs)) %>%
+  mutate(across(contains('pp'), grad_to_abs_val, datum_mbgs)) %>%
+  mutate(across(contains('shmax'), grad_to_abs_val, datum_mbgs)) %>%
+  mutate(across(contains('sigc'), grad_to_abs_val, datum_mbgs)) %>%
+  mutate(across(contains('sigd'), grad_to_abs_val, datum_mbgs)) %>%
+  na_if(0)
+```
+
+Convert logs to vp and vs and remove NA areas
+
+```{r}
+# convert slowness to velocity and remove masked areas
+dt_to_v <- function(x, datum_mbgs){
+  valid_mask = ifelse(datum_mbgs@data@values>0,1,0)
+  x^-1*1e6*valid_mask
+}
+
+# convert rhob to density and remove masked areas
+rhob_to_density <- function(x, datum_mbgs){
+  valid_mask = ifelse(datum_mbgs@data@values>0,1,0)
+  x/1000*valid_mask
+}
+
+shale_logs_v = shale_logs
+shale_logs_v@data <- shale_logs@data %>%
+  mutate(across(contains('rhob'), rhob_to_density, datum_mbgs)) %>%
+  mutate(across(contains('dtc'), dt_to_v, datum_mbgs)) %>%
+  mutate(across(contains('dts'), dt_to_v, datum_mbgs)) %>%
+  na_if(0)
+
+colnames(shale_logs_v@data) <- colnames(shale_logs_v@data) %>%
+  str_replace_all(., "dtc", "vp") %>%
+  str_replace_all(., "dts", "vs") %>%
+  str_replace_all(., "rhob", "rho")
+
+carb_logs_v = carb_logs
+carb_logs_v@data <- carb_logs@data %>%
+  mutate(across(contains('rhob'), rhob_to_density, datum_mbgs)) %>%
+  mutate(across(contains('dtc'), dt_to_v, datum_mbgs)) %>%
+  mutate(across(contains('dts'), dt_to_v, datum_mbgs)) %>%
+  na_if(0)
+
+colnames(carb_logs_v@data) <- colnames(carb_logs_v@data) %>%
+  str_replace_all(., "dtc", "vp") %>%
+  str_replace_all(., "dts", "vs") %>%
+  str_replace_all(., "rhob", "rho")
+```
+
+Plot individual realizations
+
+```{r}
+sp_col_to_df <- function(spdf, col){
+  x = spdf@coords[,1]
+  y = spdf@coords[,2]
+  data = spdf@data[,col]
+  df_out = data.frame(x,y,data)
+  names(df_out) = c('x', 'y', col)
+  df_out
+}
+
+col = 'sigc.sim2'
+ggplot(data = sp_col_to_df(stress_abs, col)) +
+  geom_tile(aes(x=x,y=y, fill=get(col)))
+```
+Iterate through each of the 1000 realizations, load the 54 models, and make 
+predictions for shale and carbonate. This loop takes a long time to run...
+
+We predict for vertical orientation only.
+
+```{r}
+for (sim in sim_vec){
+  print(sim)
+  
+  # stresses
+  deviatoric_stress = stress_abs@data[, paste0('sigd.',sim)]
+  confining_pressure = stress_abs@data[, paste0('sigc.',sim)]
+  
+  # shale logs
+  pred_vs = shale_logs_v@data[, paste0('vs.',sim)]
+  pred_vp = shale_logs_v@data[, paste0('vp.',sim)]
+  bulk_density = shale_logs_v@data[, paste0('rho.',sim)]
+  
+  na_mask = ifelse(is.na(pred_vs), NA, 1)
+  shale_df_out = data.frame(
+    deviatoric_stress , confining_pressure, pred_vs, pred_vp, bulk_density
+    ) %>% replace(is.na(.), 0) %>%
+    mutate(shale_group = 1) %>%
+    mutate(horiz_orient= 0)
+
+  # carbonate logs
+  pred_vs = carb_logs_v@data[, paste0('vs.',sim)]
+  pred_vp = carb_logs_v@data[, paste0('vp.',sim)]
+  bulk_density = carb_logs_v@data[, paste0('rho.',sim)]
+  
+  carb_df_out = data.frame(
+    deviatoric_stress , confining_pressure, pred_vs, pred_vp, bulk_density
+    ) %>% replace(is.na(.), 0) %>%
+    mutate(shale_group = 0) %>%
+    mutate(horiz_orient= 0)
+  
+  # cycle through models and make predictions for shale and carbonate
+  # load model(s)
+  for (dir in list.dirs("../output/statistical_models/",recursive = FALSE)){
+    model_name = tail(str_split(dir,'/')[[1]],1)
+    model = readRDS(paste0(dir,'/resample_results.rds'))$model
+    predictions@data[, paste0('shale.',model_name,".",sim)] <- predict(
+      model, newdata=shale_df_out %>% select(model$features))$data$response * na_mask
+    predictions@data[, paste0('carb.',model_name,".",sim)] <- predict(
+      model, newdata=carb_df_out %>% select(model$features))$data$response * na_mask
+  }
+}
+
+saveRDS(predictions,'../output/geostatistical_models/predictions.rds')
+```
+Plot some predictions - looks as expected, with lots of variance when the 
+geostatistical variance is applied the models! This is good and will be very
+interesting to write up.
+
+```{r}
+colnames(predictions@data)
+
+col = 'carb.dev_conf_vp_rho_rf_br.sim3'
+
+ggplot(data = sp_col_to_df(predictions, col)) +
+  geom_tile(aes(x=x,y=y, fill=get(col)))
+
+```
+
+- Summarize predictions (mean + sd + CI90)
+
+```{r}
+
+```
+
+
+

@@ -315,6 +315,6 @@ names(data_objs) = c('sv','pp','sh')
 
 vgm_obj = list(v,g,lmc_in, norm_objs, data_objs)
 names(vgm_obj) = c('v','g','lmc_in','norm_objs', 'data_objs')
-saveRDS(vgm_obj, '../output/stress_vgmobj.rds')
+saveRDS(vgm_obj, '../output/geostatistical_models/stress_vgmobj.rds')
 ```
 ```

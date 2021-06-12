@@ -2,6 +2,11 @@
 .Rhistory
 .Rapp.history
 
+
+predictions.rds
+rock_phys_predictions.rds
+
+
 # Session Data files
 .RData
 

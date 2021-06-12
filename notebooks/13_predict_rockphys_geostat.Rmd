@@ -1,0 +1,127 @@
+---
+title: "Predict with Model & Geostats"
+output: html_document
+---
+
+This notebook uses the geostatistical models to predict geomechanical 
+properties using the rock physics equation.
+
+```{r setup}
+library(duvernaygeomechmodel)
+library(stars)
+study_bounds = st_read('../data/study_dv_bounds.GeoJSON')
+study_raster = raster::raster('../data/study_raster.tif')
+```
+
+Rasterize sv_sf for mbgs datum (needed for consistent NA classification)
+
+```{r}
+sv_sf = st_read('../data/sv_sf.GeoJSON') %>% 
+  drop_na() %>% 
+  select(datum_mbgs)
+
+datum_mbgs = st_rasterize(sv_sf, template = st_as_stars(study_raster)) %>% 
+  as(., 'Raster')
+```
+
+Load log inputs (carbonate + shale)
+
+```{r}
+shale_logs = readRDS('../output/geostatistical_models/shale_logs_pred_trans.rds')
+carb_logs = readRDS('../output/geostatistical_models/carb_logs_pred_trans.rds')
+
+# make a predictions spdf to contain predictions
+predictions = shale_logs
+predictions@data$x = predictions@coords[,1]
+predictions@data$y = predictions@coords[,2]
+predictions@data <- predictions@data %>% select(x,y)
+
+sim_vec = str_replace_all(
+  colnames(shale_logs@data)[grepl("sv.*", colnames(shale_logs@data))],
+  "sv.",""
+  )
+```
+
+Convert logs to vp and vs and remove NA areas
+
+```{r}
+# convert slowness to velocity and remove masked areas
+dt_to_v <- function(x, datum_mbgs){
+  valid_mask = ifelse(datum_mbgs@data@values>0,1,0)
+  x^-1*1e6*valid_mask
+}
+
+# convert rhob to density and remove masked areas
+rhob_to_density <- function(x, datum_mbgs){
+  valid_mask = ifelse(datum_mbgs@data@values>0,1,0)
+  x/1000*valid_mask
+}
+
+shale_logs_v = shale_logs
+shale_logs_v@data <- shale_logs@data %>%
+  mutate(across(contains('rhob'), rhob_to_density, datum_mbgs)) %>%
+  mutate(across(contains('dtc'), dt_to_v, datum_mbgs)) %>%
+  mutate(across(contains('dts'), dt_to_v, datum_mbgs)) %>%
+  na_if(0)
+
+colnames(shale_logs_v@data) <- colnames(shale_logs_v@data) %>%
+  str_replace_all(., "dtc", "vp") %>%
+  str_replace_all(., "dts", "vs") %>%
+  str_replace_all(., "rhob", "rho")
+
+carb_logs_v = carb_logs
+carb_logs_v@data <- carb_logs@data %>%
+  mutate(across(contains('rhob'), rhob_to_density, datum_mbgs)) %>%
+  mutate(across(contains('dtc'), dt_to_v, datum_mbgs)) %>%
+  mutate(across(contains('dts'), dt_to_v, datum_mbgs)) %>%
+  na_if(0)
+
+colnames(carb_logs_v@data) <- colnames(carb_logs_v@data) %>%
+  str_replace_all(., "dtc", "vp") %>%
+  str_replace_all(., "dts", "vs") %>%
+  str_replace_all(., "rhob", "rho")
+```
+
+Iterate through each of the 1000 realizations and make predictions for shale and carbonate.
+
+```{r}
+for (sim in sim_vec){
+  print(sim)
+  
+  # shale logs
+  pred_vs = shale_logs_v@data[, paste0('vs.',sim)]
+  pred_vp = shale_logs_v@data[, paste0('vp.',sim)]
+  bulk_density = shale_logs_v@data[, paste0('rho.',sim)]
+  
+  na_mask = ifelse(is.na(pred_vs), NA, 1)
+  shale_df_out = data.frame(pred_vs, pred_vp, bulk_density) %>%
+    mutate(shale.rock_physics_pr = 
+             (pred_vp^2-2*pred_vs^2)/(2*(pred_vp^2-pred_vs^2))) %>%
+    mutate(shale.rock_physics_ym = 
+             bulk_density*pred_vs^2*((3*pred_vp^2 - 4*pred_vs^2)/(pred_vp^2-pred_vs^2))/1E6)
+
+  # carbonate logs
+  pred_vs = carb_logs_v@data[, paste0('vs.',sim)]
+  pred_vp = carb_logs_v@data[, paste0('vp.',sim)]
+  bulk_density = carb_logs_v@data[, paste0('rho.',sim)]
+  
+  carb_df_out = data.frame(pred_vs, pred_vp, bulk_density) %>%
+    mutate(carb.rock_physics_pr = 
+             (pred_vp^2-2*pred_vs^2)/(2*(pred_vp^2-pred_vs^2))) %>%
+    mutate(carb.rock_physics_ym = 
+             bulk_density*pred_vs^2*((3*pred_vp^2 - 4*pred_vs^2)/(pred_vp^2-pred_vs^2))/1E6)
+  
+  # predict for shale and carbonate
+  predictions@data[, paste0("shale.rock_physics_pr",".",sim)] <- shale_df_out %>%
+    pull(shale.rock_physics_pr)
+  predictions@data[, paste0("shale.rock_physics_ym",".",sim)] <- shale_df_out %>%
+    pull(shale.rock_physics_ym)
+  predictions@data[, paste0("carb.rock_physics_pr",".",sim)] <- carb_df_out %>%
+    pull(carb.rock_physics_pr)
+  predictions@data[, paste0("carb.rock_physics_ym",".",sim)] <- carb_df_out %>%
+    pull(carb.rock_physics_ym)
+
+}
+
+saveRDS(predictions,'../output/geostatistical_models/rock_phys_predictions.rds')
+```

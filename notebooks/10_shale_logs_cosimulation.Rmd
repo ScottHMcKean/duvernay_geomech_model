@@ -18,8 +18,6 @@ library(duvernaygeomechmodel)
 ```{r cars}
 study_bounds = st_read('../data/study_dv_bounds.GeoJSON')
 study_raster = raster::raster('../data/study_raster.tif')
-sv_sf = st_read('../data/sv_sf.GeoJSON') %>%
-  drop_na()
 
 # make a prediction grid
 st_grid <- rasterToPoints(study_raster, spatial = TRUE)
@@ -29,7 +27,7 @@ st_grid <- as(st_grid, "SpatialPixels")
 Load v, g, and lmc_in values
 
 ```{r}
-vgm_in = readRDS('../output/shale_logs_vgmobj.rds')
+vgm_in = readRDS('../output/geostatistical_models/shale_logs_vgmobj.rds')
 v = vgm_in$v
 g = vgm_in$g
 lmc_in = vgm_in$lmc_in
@@ -40,7 +38,7 @@ data_objs = vgm_in$data_objs
 Make predictions
 
 ```{r}
-pred_spdf = predict(g, st_grid, nsim=100)
+pred_spdf = predict(g, st_grid, nsim=1000)
 ```
 Back transform variables via BestNormalize package + objs
 
@@ -68,6 +66,8 @@ trans@data <- pred_spdf@data %>%
   mutate(across(contains('rhob'),rhob_invert_pred)) %>%
   mutate(across(contains('dtc'),dtc_invert_pred)) %>%
   mutate(across(contains('dts'),dts_invert_pred))
+
+saveRDS(trans, '../output/geostatistical_models/shale_logs_pred_trans.rds')
 ```
 
 Summary statistics
@@ -88,14 +88,18 @@ summary = trans@data %>%
   ) %>%
   mutate(x = pred_spdf@coords[,1]) %>%
   mutate(y = pred_spdf@coords[,2])
+
+write_csv(summary, '../output/geostatistical_models/shale_logs_summary_grid.csv')
 ```
 
 Plots
 
 ```{r}
 ggplot() +
-  geom_tile(data = summary, aes(x=x, y=y, fill = sv_sd)) +
+  geom_tile(data = summary, aes(x=x, y=y, fill = dtc_sd)) +
   geom_sf(data = study_bounds, fill=NA, colour='yellow', size=1.5) +
   coord_sf(datum=st_crs(26911)) +
-  theme_minimal()
+  theme_minimal() +
+  ggsave('../output/geostatistical_models/shale_dtc_sd.pdf')
+  
 ```

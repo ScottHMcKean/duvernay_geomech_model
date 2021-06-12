@@ -498,5 +498,5 @@ names(data_objs) = c('sv','rhob','dtc','dts')
 
 vgm_obj = list(v,g,lmc_in, norm_objs, data_objs)
 names(vgm_obj) = c('v','g','lmc_in','norm_objs', 'data_objs')
-saveRDS(vgm_obj, '../output/carb_logs_vgmobj.rds')
+saveRDS(vgm_obj, '../output/geostatistical_models/carb_logs_vgmobj.rds')
 ```
