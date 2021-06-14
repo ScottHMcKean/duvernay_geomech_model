@@ -36,12 +36,10 @@ rock_phys_pred = readRDS('../output/geostatistical_models/rock_phys_predictions.
 Get a list of models
 
 ```{r}
-models = c()
+folders = c()
 for (dir in list.dirs("../output/statistical_models/",recursive = FALSE)){
-    models = append(models, tail(str_split(dir,'/')[[1]],1))
+    folders = append(folders, tail(str_split(dir,'/')[[1]],1))
 }
-# add rock physics into the mix
-models = models %>% append('rock_physics_ym') %>% append('rock_physics_pr')
 ```
 Pick a feature set
 
@@ -49,56 +47,105 @@ Pick a feature set
 feat_sets = c("vp_rho", "vp_vs_rho", "dev_vp_rho", "dev_vp_vs_rho", 
               "dev_conf_vp_rho", "dev_conf_vp_vs_rho")
 
-feat_set = "vp_vs_rho"
-```
+targets = c("br", "ym", "pr")
 
-Subset predictions
+facies = c("shale", "carb")
 
-```{r}
-subset_predictions <- function(predictions, feat_set){
-  predictions@data <- predictions@data %>% select(contains(feat_set))
+models = c("glm", "mars", "rf")
+
+subset_options = expand.grid(
+  feat_sets=feat_sets, targets=targets, facies=facies, models=models,
+  stringsAsFactors=FALSE)
+
+subset_predictions <- function(predictions, feat_set, target, facies, model){
+  predictions@data <- predictions@data %>% 
+    select(contains(feat_set)) %>%
+    select(contains(target)) %>%
+    select(contains(facies)) %>%
+    select(contains(model))
   predictions
 }
-
-pred_feat_set = subset_predictions(predictions, "dev_conf_vp_vs_rho_glm")
 ```
 
-Plot individual realizations
+Subset predictions and make summary graphs / table
 
 ```{r}
-sp_col_to_df <- function(spdf, col){
-  x = spdf@coords[,1]
-  y = spdf@coords[,2]
-  data = spdf@data[,col]
-  df_out = data.frame(x,y,data)
-  names(df_out) = c('x', 'y', col)
-  df_out
+for (row in 1:nrow(subset_options)){
+  print(row)
+  feat_set = subset_options[row, 'feat_sets']
+  target = subset_options[row, 'targets']
+  facie = subset_options[row, 'facies']
+  model = subset_options[row, 'models']
+  
+  subset_name = str_c(facie, "_", feat_set, "_", model, "_", target)
+  file_prefix = str_c("../output/prediction_summaries/", subset_name)
+
+  # select a single set of realizations
+  pred_subset = subset_predictions(
+    predictions, feat_set, target, facie, model
+    )
+  
+  #Summarize a subset
+  # get rowwise summary statistics for the feature subset
+  pred_subset_summary = pred_subset@data %>%
+    rowwise() %>%
+    summarize(
+      mean = mean(c_across()),
+      sd = sd(c_across()),
+      p05 = quantile(c_across(), 0.05, na.rm=TRUE),
+      p95 = quantile(c_across(), 0.95, na.rm=TRUE)
+    ) %>%
+    mutate(ci90 = p95-p05) %>%
+    mutate(x = pred_subset@coords[,1]) %>%
+    mutate(y = pred_subset@coords[,2])
+  
+  # output
+  write_csv(pred_subset_summary, 
+    str_c(file_prefix, "_predsummary.csv")
+    )
+  
+  #Make plots
+  ## Make some rules for plot censoring
+  if (target == 'ym'){
+    mean_lim = c(15,85)
+    sd_lim = c(0,20)
+    ci90_lim = c(0,20)
+  } else if (target == 'pr'){
+    mean_lim = c(0.1,0.5)
+    sd_lim = c(0,0.2)
+    ci90_lim = c(0,0.2)
+  } else {
+    mean_lim = c(0.2,0.5)
+    sd_lim = c(0,0.2)
+    ci90_lim = c(0,0.2)
+  }
+  
+  ## Make plots
+  ggplot(data = pred_subset_summary) +
+    geom_tile(aes(x=x, y=y, fill=mean)) +
+    scale_fill_viridis_c(limits=mean_lim, oob=scales::squish) +
+    coord_equal() +
+    theme_minimal() +
+    ylab("") + xlab("") +
+    ggtitle(str_c(subset_name, " mean")) +
+    ggsave(str_c(file_prefix, "_meanplot.pdf"))
+  
+  ggplot(data = pred_subset_summary) +
+    geom_tile(aes(x=x, y=y, fill=sd)) +
+    scale_fill_viridis_c(limits=sd_lim, oob=scales::squish) +
+    coord_equal() +
+    theme_minimal() +
+    ylab("") + xlab("") +
+    ggtitle(str_c(subset_name, " sd")) +
+    ggsave(str_c(file_prefix, "_sdplot.pdf"))
+  
+  ggplot(data = pred_subset_summary) +
+    geom_tile(aes(x=x, y=y, fill=ci90)) +
+    scale_fill_viridis_c(limits=ci90_lim, oob=scales::squish) +
+    coord_equal() +
+    theme_minimal() +
+    ylab("") + xlab("") +
+    ggtitle(str_c(subset_name, " ci90")) +
+    ggsave(str_c(file_prefix, "_ci90plot.pdf"))
 }
-
-col = 'sigc.sim2'
-ggplot(data = sp_col_to_df(stress_abs, col)) +
-  geom_tile(aes(x=x,y=y, fill=get(col)))
 ```
-
-Plot some predictions - looks as expected, with lots of variance when the 
-geostatistical variance is applied the models! This is good and will be very
-interesting to write up.
-
-```{r}
-colnames(predictions@data)
-
-col = 'carb.dev_conf_vp_rho_rf_br.sim3'
-
-ggplot(data = sp_col_to_df(predictions, col)) +
-  geom_tile(aes(x=x,y=y, fill=get(col)))
-
-```
-
-- Summarize predictions (mean + sd + CI90)
-
-```{r}
-
-```
-
-
-
