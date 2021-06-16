@@ -31,16 +31,22 @@ Load predictions from the previous notebook
 ```{r}
 predictions = readRDS('../output/geostatistical_models/predictions.rds')
 rock_phys_pred = readRDS('../output/geostatistical_models/rock_phys_predictions.rds')
-```
+predictions@data <- cbind(predictions@data, rock_phys_pred@data)
 
-Get a list of models
-
-```{r}
-folders = c()
-for (dir in list.dirs("../output/statistical_models/",recursive = FALSE)){
-    folders = append(folders, tail(str_split(dir,'/')[[1]],1))
+sp_col_to_df <- function(spdf, col){
+  x = spdf@coords[,1]
+  y = spdf@coords[,2]
+  data = spdf@data[,col]
+  df_out = data.frame(x,y,data)
+  names(df_out) = c('x', 'y', col)
+  df_out
 }
+
+col = 'shale.rock_physics_pr.sim1'
+ggplot(data = sp_col_to_df(predictions, col)) +
+  geom_tile(aes(x=x,y=y, fill=get(col)))
 ```
+
 Pick a feature set
 
 ```{r}
@@ -52,10 +58,20 @@ targets = c("br", "ym", "pr")
 facies = c("shale", "carb")
 
 models = c("glm", "mars", "rf")
+```
 
+Subset predictions and make summary graphs / table
+
+```{r}
 subset_options = expand.grid(
   feat_sets=feat_sets, targets=targets, facies=facies, models=models,
   stringsAsFactors=FALSE)
+
+rock_phys_subset_options = expand.grid(
+  feat_sets=c("_"), targets=c("ym","pr"), facies=facies, models=c("rock_physics"),
+  stringsAsFactors=FALSE)
+
+subset_options = rbind(subset_options, rock_phys_subset_options)
 
 subset_predictions <- function(predictions, feat_set, target, facies, model){
   predictions@data <- predictions@data %>% 
@@ -65,11 +81,7 @@ subset_predictions <- function(predictions, feat_set, target, facies, model){
     select(contains(model))
   predictions
 }
-```
 
-Subset predictions and make summary graphs / table
-
-```{r}
 for (row in 1:nrow(subset_options)){
   print(row)
   feat_set = subset_options[row, 'feat_sets']
@@ -107,17 +119,17 @@ for (row in 1:nrow(subset_options)){
   #Make plots
   ## Make some rules for plot censoring
   if (target == 'ym'){
-    mean_lim = c(15,85)
-    sd_lim = c(0,20)
-    ci90_lim = c(0,20)
+    mean_lim = c(5,65)
+    sd_lim = c(0,30)
+    ci90_lim = c(0,30)
   } else if (target == 'pr'){
-    mean_lim = c(0.1,0.5)
+    mean_lim = c(0.15,0.35)
     sd_lim = c(0,0.2)
     ci90_lim = c(0,0.2)
   } else {
-    mean_lim = c(0.2,0.5)
-    sd_lim = c(0,0.2)
-    ci90_lim = c(0,0.2)
+    mean_lim = c(0.0,0.6)
+    sd_lim = c(0,0.3)
+    ci90_lim = c(0,0.3)
   }
   
   ## Make plots
@@ -147,5 +159,104 @@ for (row in 1:nrow(subset_options)){
     ylab("") + xlab("") +
     ggtitle(str_c(subset_name, " ci90")) +
     ggsave(str_c(file_prefix, "_ci90plot.pdf"))
+}
+```
+Make a boxplot of predictions for each facies for each target
+
+```{r}
+subset_pred_target <- function(predictions, target){
+  predictions@data <- predictions@data %>% 
+    select(contains(target)) 
+  predictions
+}
+
+for (target in c('br', 'pr', 'ym')){
+  if (target == 'br'){
+    target_title = 'Brittleness'
+  } else if (target == 'pr'){
+    target_title = 'Poisson\'s Ratio'
+  } else {
+    target_title = 'Young\'s Modulus'
+  }
+  print(target_title)
+
+  filename = str_c("../output/prediction_summaries/", target, "_boxplot.pdf")
+
+  # select a single set of realizations
+  pred_subset = subset_pred_target(predictions, target)
+  
+  # transform subset to a long dataframe for plotting
+  mod_feat = expand.grid(model = models, feat_set = feat_sets, facie = c('shale','carb'))
+  mod_feat_cols = c(
+    str_c(mod_feat$facie, ".", mod_feat$feat_set, "_", mod_feat$model, "_",target)
+  )
+  
+  if (target == 'ym'){
+    mod_feat_cols = c(mod_feat_cols, "shale.rock_physics_ym", "carb.rock_physics_ym")
+  } 
+  
+  if (target == 'pr'){
+    mod_feat_cols = c(mod_feat_cols, "shale.rock_physics_pr", "carb.rock_physics_pr")
+  }
+    
+  # combine all features
+  comb_vectors = c()
+  for (mod_feat_col in mod_feat_cols){
+    x = pred_subset@data %>%
+      select(contains(mod_feat_col)) %>%
+      gather() %>%
+      select(value) %>%
+      rename(!!mod_feat_col := value)
+    comb_vectors = append(comb_vectors, x)
+  }
+  
+  # wide to long for plotting
+  comb_df = data.frame(comb_vectors) %>%
+    gather(key='mod_feat', value='prediction') %>%
+    drop_na() %>%
+    slice_sample(n=1E6) %>%
+    mutate(model_type = case_when(
+      str_detect(.$mod_feat, 'glm') ~ 'glm',
+      str_detect(.$mod_feat, 'mars') ~ 'mars',
+      str_detect(.$mod_feat, 'rf') ~ 'rf',
+      str_detect(.$mod_feat, 'rock_phys') ~ 'rp'
+    )) %>%
+    mutate(facies = case_when(
+      str_detect(.$mod_feat, 'shale') ~ 'Shale',
+      str_detect(.$mod_feat, 'carb') ~ 'Carbonate'
+    )) %>%
+    mutate(mod_feat = mod_feat %>%
+       str_replace_all(., 'carb.', '') %>%
+       str_replace_all(., 'shale.', '') %>%
+       str_replace_all(., '_ym', '') %>%
+       str_replace_all(., '_pr', '') %>%
+       str_replace_all(., '_br', ''))
+  
+  if (target == 'br'){
+    ylims=c(0,0.6)
+  } else if (target == 'pr'){
+    ylims=c(0.15,0.35)
+  } else {
+    ylims=c(5,65)
+  }
+  
+  if (target == 'br'){
+    plt = ggplot(comb_df) +
+      geom_boxplot(aes(x=reorder(mod_feat, desc(mod_feat)), y=prediction, fill=model_type))
+  } else {
+    plt = ggplot(comb_df) +
+      geom_violin(aes(x=reorder(mod_feat, desc(mod_feat)), y=prediction, fill=model_type))
+  }
+  
+  plt +
+    ylim(ylims) +
+    facet_wrap(. ~ facies, scales='free_x') +
+    ylab("") +
+    xlab("") +
+    ggtitle(target_title) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),
+          plot.margin = margin(10, 10, 10, 20)) +
+    ggsave(filename)
 }
 ```
