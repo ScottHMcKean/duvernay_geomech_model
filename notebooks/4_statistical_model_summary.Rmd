@@ -8,46 +8,195 @@ output: html_document
 ```{r setup}
 library(duvernaygeomechmodel)
 set.seed(1)
-```
 
-Load an example model
+get_model_type <- function(model_dir){
+  if (str_detect(model_dir,'rf')){
+    model_type = 'rf'
+  } else if (str_detect(model_dir,'glm')){
+    model_type = 'glm'
+  } else {
+    model_type = 'mars'
+  }
+  model_type
+}
 
-```{r}
-model_folder = '../output/dev_conf_vp_rho_mars_ym/'
+get_model_target <- function(model_dir){
+  if (str_detect(model_dir,'ym')){
+    target = 'ym'
+  } else if (str_detect(model_dir,'pr')){
+    target = 'pr'
+  } else {
+    target = 'br'
+  }
+  target
+}
 
-```
-
-Get metrics from output log (.txt)
-
-```{r}
-results = read_tsv(str_c(model_folder,'model_results.txt'), 
+read_results <- function(model_dir){
+  results = read_tsv(str_c(model_dir,'/model_results.txt'), 
                    skip_empty_rows = TRUE, col_names=FALSE)
-
-train_bias = as.numeric(str_replace(results[2,],"\\[1\\] ",""))
-train_var = as.numeric(str_replace(results[4,],"\\[1\\] ",""))
-test_bias = as.numeric(str_replace(results[6,],"\\[1\\] ",""))
-test_var = as.numeric(str_replace(results[8,],"\\[1\\] ",""))
-
-# cross validated
-train_perf = str_split(results[17,], " ")
-train_mae = as.numeric(train_perf[[1]][1])
-train_rmse  = as.numeric(train_perf[[1]][2])
-
-test_perf = str_split(results[20,], " ")
-test_mae = as.numeric(train_perf[[1]][1])
-test_rmse  = as.numeric(train_perf[[1]][2])
+  
+  train_perf = str_split(results[17,], " ")
+  train_mae = as.numeric(train_perf[[1]][1])
+  train_rmse  = as.numeric(train_perf[[1]][2])
+  train_bias = as.numeric(str_replace(results[2,],"\\[1\\] ",""))
+  train_var = as.numeric(str_replace(results[4,],"\\[1\\] ",""))
+  
+  test_perf = str_split(results[20,], " ")
+  test_mae = as.numeric(test_perf[[1]][1])
+  test_rmse  = as.numeric(test_perf[[1]][2])
+  test_bias = as.numeric(str_replace(results[6,],"\\[1\\] ",""))
+  test_var = as.numeric(str_replace(results[8,],"\\[1\\] ",""))
+  
+  list(train_mae=train_mae, train_rmse=train_rmse, train_bias=train_bias,
+       train_var=train_var, test_mae=test_mae, test_rmse=test_rmse,
+       test_bias=test_bias, test_var=test_var)
+}
 ```
 
-Parse resample object and make a single column for a model performance (train/test)
-for a large histogram of model performance (one for each model - so feats and target)
+Iterate through models
 
+```{r,echo=FALSE}
+summary_dir = '../output/statistical_model_summaries/'
+output_dir = '../output/statistical_models/'
 
+comp_tbl = tibble()
+comp_resamp = tibble()
+for (model_dir in list.dirs(output_dir, recursive = FALSE)){
+  model_type = get_model_type(model_dir)
+
+  target = get_model_target(model_dir)
+
+  feat_set = str_replace(model_dir, '../output/statistical_models//', '') %>%
+    str_replace(., str_c('_',model_type),"") %>%
+    str_replace(., str_c('_',target),"")
+  
+  res = read_results(model_dir)
+  
+  full_target = case_when(
+    target == 'ym' ~ 'Young\'s Modulus',
+    target == 'pr' ~ 'Poisson\'s Ratio',
+    TRUE ~ 'Brittleness'
+  )
+  
+  train = tibble(
+    model_type=str_to_upper(model_type), target=full_target, feat_set, set='train',
+    mae=res$train_mae, rmse=res$train_rmse, bias=res$train_bias, var=res$train_var
+  )
+  
+  test = tibble(
+    model_type=str_to_upper(model_type), target=full_target, feat_set, set='test',
+    mae=res$test_mae, rmse=res$test_rmse, bias=res$test_bias, var=res$test_var
+  )
+  
+  comp_tbl = bind_rows(comp_tbl, bind_rows(train,test))
+  
+  resample_obj = read_rds(str_c(model_dir,'/resample_results.rds'))$resample_obj
+
+  trn_df = resample_obj$measures.train %>%
+    mutate(set='train')
+  
+  tst_df = resample_obj$measures.test %>%
+    mutate(set='test')
+  
+  resamp_df = bind_rows(trn_df, tst_df) %>%
+    mutate(model_type = str_to_upper(model_type)) %>%
+    mutate(target = target) %>%
+    mutate(feat_set = feat_set)
+  
+  comp_resamp = bind_rows(comp_resamp, resamp_df)
+}
+```
+
+Plot dot plots of model performance. Four plots with feature_set + model_type
+and result
 
 ```{r}
-resample_obj = read_rds(str_c(model_folder,'resample_results.rds'))$resample_obj
-resample_obj$measures.train
+ggplot(comp_tbl) +
+  geom_point(aes(x=model_type, y=mae, color=feat_set, shape=set)) +
+  scale_color_brewer(type='qual', palette = 'Paired') +
+  facet_wrap(. ~ target, scales ='free') +
+  xlab("") +
+  ylab("MAE") +
+  ggsave(str_c(summary_dir,'summary_mae.pdf'))
 
-ggplot(resample_obj$measures.train) +
-  geom_boxplot(aes(x=mae))
+ggplot(comp_tbl) +
+  geom_point(aes(x=model_type, y=rmse, color=feat_set, shape=set)) +
+  scale_color_brewer(type='qual', palette = 'Paired') +
+  facet_wrap(. ~ target, scales ='free') +
+  xlab("") +
+  ylab("RMSE") +
+  ggsave(str_c(summary_dir,'summary_rmse.pdf'))
+
+ggplot(comp_tbl) +
+  geom_point(aes(x=model_type, y=bias, color=feat_set, shape=set)) +
+  scale_color_brewer(type='qual', palette = 'Paired') +
+  facet_wrap(. ~ target, scales ='free') +
+  xlab("") +
+  ylab("Bias") +
+  ggsave(str_c(summary_dir,'summary_bias.pdf'))
+
+ggplot(comp_tbl) +
+  geom_point(aes(x=model_type, y=var, color=feat_set, shape=set)) +
+  scale_color_brewer(type='qual', palette = 'Paired') +
+  facet_wrap(. ~ target, scales ='free') +
+  xlab("") +
+  ylab("Variance") +
+  ggsave(str_c(summary_dir,'summary_variance.pdf'))
+```
+
+Plot boxplot of resampling results
+
+```{r}
+
+
+ggplot(comp_resamp %>% filter(target == 'ym')) +
+  geom_boxplot(aes(y=mae, x=model_type, fill=feat_set)) +
+  facet_wrap(. ~ set, scales = 'fixed') +
+  xlab("") +
+  ylab('MAE') +
+  ggtitle('Young\'s Modulus (GPa)') +
+  ggsave(str_c(summary_dir,'ym_mae.pdf'))
+
+ggplot(comp_resamp %>% filter(target == 'pr')) +
+  geom_boxplot(aes(y=mae, x=model_type, fill=feat_set)) +
+  facet_wrap(. ~ set, scales = 'fixed') +
+  xlab("") +
+  ylab('MAE') +
+  ggtitle('Poisson\'s Ratio') +
+  ggsave(str_c(summary_dir,'pr_mae.pdf'))
+
+ggplot(comp_resamp %>% filter(target == 'br')) +
+  geom_boxplot(aes(y=mae, x=model_type, fill=feat_set)) +
+  facet_wrap(. ~ set, scales = 'fixed') +
+  ylim(0,0.2) +
+  xlab("") +
+  ylab('MAE') +
+  ggtitle('Brittleness') +
+  ggsave(str_c(summary_dir,'br_mae.pdf'))
+
+ggplot(comp_resamp %>% filter(target == 'ym')) +
+  geom_boxplot(aes(y=rmse, x=model_type, fill=feat_set)) +
+  facet_wrap(. ~ set, scales = 'fixed') +
+  xlab("") +
+  ylab('RSME') +
+  ggtitle('Young\'s Modulus (GPa)') +
+  ggsave(str_c(summary_dir,'ym_rmse.pdf'))
+
+ggplot(comp_resamp %>% filter(target == 'pr')) +
+  geom_boxplot(aes(y=rmse, x=model_type, fill=feat_set)) +
+  facet_wrap(. ~ set, scales = 'fixed') +
+  xlab("") +
+  ylab('RSME') +
+  ggtitle('Poisson\'s Ratio') +
+  ggsave(str_c(summary_dir,'pr_rmse.pdf'))
+
+ggplot(comp_resamp %>% filter(target == 'br')) +
+  geom_boxplot(aes(y=rmse, x=model_type, fill=feat_set)) +
+  facet_wrap(. ~ set, scales = 'fixed') +
+  ylim(0,0.25) +
+  xlab("") +
+  ylab('RSME') +
+  ggtitle('Brittleness') +
+  ggsave(str_c(summary_dir,'br_rmse.pdf'))
 
 ```
