@@ -125,6 +125,12 @@ plot_importance_interaction <- function(predictor, prefix, repetitions=500){
          arrangeGrob(grobs = list(p1,p2), ncol=1),
          width = 6, height = 6, dpi=600)
 
+  # write out importance results
+  imp_int_res = importance$results %>%
+    merge(., data.frame(interact$results), by.x='feature', by.y='.feature')
+
+  write_csv(imp_int_res, file = paste0('../output/',prefix,"/imp_int_res.csv"))
+
   TRUE
 }
 

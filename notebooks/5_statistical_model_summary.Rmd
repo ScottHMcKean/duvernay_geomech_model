@@ -112,91 +112,103 @@ and result
 
 ```{r}
 ggplot(comp_tbl) +
-  geom_point(aes(x=model_type, y=mae, color=feat_set, shape=set)) +
+  geom_point(aes(x=model_type, y=mae, fill=feat_set, color=feat_set, shape=set), size=3) +
   scale_color_brewer(type='qual', palette = 'Paired') +
+  scale_fill_brewer(type='qual', palette = 'Paired') +
+  scale_shape_manual(values=c(21, 24))+
   facet_wrap(. ~ target, scales ='free') +
   xlab("") +
   ylab("MAE") +
-  ggsave(str_c(summary_dir,'summary_mae.pdf'))
+  ggsave(str_c(summary_dir,'summary_mae.pdf'), width=7, height=5)
 
 ggplot(comp_tbl) +
-  geom_point(aes(x=model_type, y=rmse, color=feat_set, shape=set)) +
+  geom_point(aes(x=model_type, y=rmse, fill=feat_set, color=feat_set, shape=set), size=3) +
   scale_color_brewer(type='qual', palette = 'Paired') +
+  scale_fill_brewer(type='qual', palette = 'Paired') +
+  scale_shape_manual(values=c(21, 24))+
   facet_wrap(. ~ target, scales ='free') +
   xlab("") +
   ylab("RMSE") +
-  ggsave(str_c(summary_dir,'summary_rmse.pdf'))
+  ggsave(str_c(summary_dir,'summary_rmse.pdf'), width=7, height=5)
 
 ggplot(comp_tbl) +
-  geom_point(aes(x=model_type, y=bias, color=feat_set, shape=set)) +
+  geom_point(aes(x=model_type, y=bias, fill=feat_set, color=feat_set, shape=set), size=3) +
   scale_color_brewer(type='qual', palette = 'Paired') +
+  scale_fill_brewer(type='qual', palette = 'Paired') +
+  scale_shape_manual(values=c(21, 24))+
   facet_wrap(. ~ target, scales ='free') +
   xlab("") +
   ylab("Bias") +
-  ggsave(str_c(summary_dir,'summary_bias.pdf'))
+  ggsave(str_c(summary_dir,'summary_bias.pdf'), width=7, height=5)
 
 ggplot(comp_tbl) +
-  geom_point(aes(x=model_type, y=var, color=feat_set, shape=set)) +
+  geom_point(aes(x=model_type, y=var, fill=feat_set, color=feat_set, shape=set), size=3) +
   scale_color_brewer(type='qual', palette = 'Paired') +
+  scale_fill_brewer(type='qual', palette = 'Paired') +
+  scale_shape_manual(values=c(21, 24))+
   facet_wrap(. ~ target, scales ='free') +
   xlab("") +
   ylab("Variance") +
-  ggsave(str_c(summary_dir,'summary_variance.pdf'))
+  ggsave(str_c(summary_dir,'summary_variance.pdf'), width=7, height=5)
 ```
 
 Plot boxplot of resampling results
 
 ```{r}
-
-
 ggplot(comp_resamp %>% filter(target == 'ym')) +
   geom_boxplot(aes(y=mae, x=model_type, fill=feat_set)) +
+  scale_fill_brewer(type='qual', palette = 'Paired') +
   facet_wrap(. ~ set, scales = 'fixed') +
   xlab("") +
   ylab('MAE') +
   ggtitle('Young\'s Modulus (GPa)') +
-  ggsave(str_c(summary_dir,'ym_mae.pdf'))
+  ggsave(str_c(summary_dir,'ym_mae.pdf'), width=5, height=5)
 
 ggplot(comp_resamp %>% filter(target == 'pr')) +
   geom_boxplot(aes(y=mae, x=model_type, fill=feat_set)) +
+  scale_fill_brewer(type='qual', palette = 'Paired') +
   facet_wrap(. ~ set, scales = 'fixed') +
   xlab("") +
   ylab('MAE') +
   ggtitle('Poisson\'s Ratio') +
-  ggsave(str_c(summary_dir,'pr_mae.pdf'))
+  ggsave(str_c(summary_dir,'pr_mae.pdf'), width=5, height=5)
 
 ggplot(comp_resamp %>% filter(target == 'br')) +
   geom_boxplot(aes(y=mae, x=model_type, fill=feat_set)) +
+  scale_fill_brewer(type='qual', palette = 'Paired') +
   facet_wrap(. ~ set, scales = 'fixed') +
   ylim(0,0.2) +
   xlab("") +
   ylab('MAE') +
   ggtitle('Brittleness') +
-  ggsave(str_c(summary_dir,'br_mae.pdf'))
+  ggsave(str_c(summary_dir,'br_mae.pdf'), width=5, height=5)
 
 ggplot(comp_resamp %>% filter(target == 'ym')) +
   geom_boxplot(aes(y=rmse, x=model_type, fill=feat_set)) +
+  scale_fill_brewer(type='qual', palette = 'Paired') +
   facet_wrap(. ~ set, scales = 'fixed') +
   xlab("") +
   ylab('RSME') +
   ggtitle('Young\'s Modulus (GPa)') +
-  ggsave(str_c(summary_dir,'ym_rmse.pdf'))
+  ggsave(str_c(summary_dir,'ym_rmse.pdf'), width=5, height=5)
 
 ggplot(comp_resamp %>% filter(target == 'pr')) +
   geom_boxplot(aes(y=rmse, x=model_type, fill=feat_set)) +
+  scale_fill_brewer(type='qual', palette = 'Paired') +
   facet_wrap(. ~ set, scales = 'fixed') +
   xlab("") +
   ylab('RSME') +
   ggtitle('Poisson\'s Ratio') +
-  ggsave(str_c(summary_dir,'pr_rmse.pdf'))
+  ggsave(str_c(summary_dir,'pr_rmse.pdf'), width=5, height=5)
 
 ggplot(comp_resamp %>% filter(target == 'br')) +
   geom_boxplot(aes(y=rmse, x=model_type, fill=feat_set)) +
+  scale_fill_brewer(type='qual', palette = 'Paired') +
   facet_wrap(. ~ set, scales = 'fixed') +
   ylim(0,0.25) +
   xlab("") +
   ylab('RSME') +
   ggtitle('Brittleness') +
-  ggsave(str_c(summary_dir,'br_rmse.pdf'))
+  ggsave(str_c(summary_dir,'br_rmse.pdf'), width=5, height=5)
 
 ```
