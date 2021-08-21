@@ -45,3 +45,5 @@ vignettes/*.pdf
 
 # Raw data
 data-raw/
+output/statistical_models/vp_vs_rho_rf_ym/tune_results.rds
+output/statistical_models/vp_vs_rho_rf_ym/resample_results.rds

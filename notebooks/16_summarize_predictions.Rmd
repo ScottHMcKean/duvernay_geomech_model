@@ -42,7 +42,7 @@ sp_col_to_df <- function(spdf, col){
   df_out
 }
 
-col = 'shale.rock_physics_pr.sim1'
+col = 'shale.rock_physics_pr.sim2'
 ggplot(data = sp_col_to_df(predictions, col)) +
   geom_tile(aes(x=x,y=y, fill=get(col)))
 ```
@@ -219,7 +219,7 @@ for (target in c('br', 'pr', 'ym')){
       str_detect(.$mod_feat, 'glm') ~ 'glm',
       str_detect(.$mod_feat, 'mars') ~ 'mars',
       str_detect(.$mod_feat, 'rf') ~ 'rf',
-      str_detect(.$mod_feat, 'rock_phys') ~ 'rp'
+      str_detect(.$mod_feat, 'rock_phys') ~ 'wave'
     )) %>%
     mutate(facies = case_when(
       str_detect(.$mod_feat, 'shale') ~ 'Shale',
@@ -230,23 +230,26 @@ for (target in c('br', 'pr', 'ym')){
        str_replace_all(., 'shale.', '') %>%
        str_replace_all(., '_ym', '') %>%
        str_replace_all(., '_pr', '') %>%
-       str_replace_all(., '_br', ''))
+       str_replace_all(., '_br', '')) %>%
+    mutate(feat = mod_feat %>%
+       str_replace_all(., '_glm', '') %>%
+       str_replace_all(., '_mars', '') %>%
+       str_replace_all(., '_rf', '')
+       )
   
   if (target == 'br'){
     ylims=c(0,0.6)
   } else if (target == 'pr'){
-    ylims=c(0.15,0.35)
+    ylims=c(0.1,0.4)
   } else {
     ylims=c(5,65)
   }
   
-  if (target == 'br'){
-    plt = ggplot(comb_df) +
-      geom_boxplot(aes(x=reorder(mod_feat, desc(mod_feat)), y=prediction, fill=model_type))
-  } else {
-    plt = ggplot(comb_df) +
-      geom_violin(aes(x=reorder(mod_feat, desc(mod_feat)), y=prediction, fill=model_type))
-  }
+  plt = ggplot(comb_df) +
+      geom_boxplot(
+        aes(x=reorder(feat, desc(feat)), y=prediction, fill=model_type),
+        outlier.size=0.5
+        )
   
   plt +
     ylim(ylims) +

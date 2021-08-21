@@ -72,8 +72,8 @@ get_resample_regr_res = function(resample){
 #' @return individual pdp plot
 #' @export
 make_pdp_plot <- function(i, predictor, feats){
-  pdp <- FeatureEffect$new(predictor, method = 'pdp+ice',
-                           feature = feats[i])
+  pdp <- FeatureEffect$new(predictor, method = 'pdp+ice', center.at = 0,
+                           feature = feats[i], grid.size=50)
 
   plot(pdp) + theme_minimal() + theme(axis.title.y=element_blank())
 }
@@ -175,13 +175,16 @@ generate_model <- function(data,
   target, features, model_type, pset, prefix, seed=1, train_ratio=0.9,
   mbo_budget= 75L, resample_iters=1000, importance_reps=50){
   set.seed(seed)
-  ml_df = data %>% dplyr::select(features, target)
+
+  ml_df = data %>%
+    dplyr::select(features, target)
 
   train_rows = sample(nrow(ml_df)*train_ratio)
   train_df = ml_df[train_rows,]
   test_df = ml_df[-train_rows,]
 
   learner = makeLearner(model_type)
+  pre_learner = makePreprocWrapperCaret(learner, method=c('center','scale'))
 
   train_task = makeRegrTask(data = train_df, target = target)
   test_task = makeRegrTask(data = test_df, target = target)

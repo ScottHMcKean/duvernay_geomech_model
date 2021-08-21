@@ -15,17 +15,22 @@ Load datasets, encode factors, and set brittleness with residual data
 ```{r}
 mldf_nores = read_csv("../data/merged_tests_no_residual.csv") %>%
   mutate(horiz_orient = ifelse(orientation == 'horizontal', 1, 0)) %>%
-  mutate(shale_group = ifelse(group == 'shale', 1, 0)) %>% 
+  mutate(shale_group = ifelse(group == 'shale', 1, 0)) %>%
+  mutate(poisson_ratio = ifelse(poisson_ratio > 0.5, 0.5, poisson_ratio)) %>%
   as.data.frame()
 
 mldf_wres = read_csv("../data/merged_tests_w_residual.csv") %>%
+  mutate(residual_stress_dev = ifelse(residual_stress_dev < 0, 0, residual_stress_dev)) %>%
   mutate(brittleness = (peak_stress_dev - residual_stress_dev)/peak_stress_dev) %>%
   mutate(horiz_orient = ifelse(orientation == 'horizontal', 1, 0)) %>%
   mutate(shale_group = ifelse(group == 'shale', 1, 0)) %>%
+  mutate(poisson_ratio = ifelse(poisson_ratio > 0.5, 0.5, poisson_ratio)) %>%
+  mutate(brittleness = ifelse(brittleness > 1, 1, brittleness)) %>%
   as.data.frame()
 ```
 
 ```{r}
+
 feat_set = c('pred_vp', 'bulk_density', 'horiz_orient', 'shale_group')
 feat_pref = 'vp_rho'
 

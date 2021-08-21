@@ -94,6 +94,17 @@ ggplot(mldf_no_res_gather, aes(sample = value)) +
   ggsave('../output/qq_plot_facet.pdf', height = 6, width = 12, dpi=600)
 ```
 
+Box Plots
+
+```{r}
+ggplot(mldf_no_res_gather, aes(y = value)) +
+  geom_violin(aes(x='No Residual'), color='black', fill='grey') +
+  geom_violin(data = mldf_wres_gather, aes(y = value, x='With Residual'), color='red', fill='grey') +
+  geom_boxplot(aes(x='No Residual'), color='black', alpha=0.5) +
+  geom_boxplot(data = mldf_wres_gather, aes(y = value, x='With Residual'), color='red', alpha=0.5) +
+  facet_wrap(. ~ key, scales = 'free_y')
+```
+
 Filter-based feature importance using MLR and information gain - inconclusive.
 
 ```{r}

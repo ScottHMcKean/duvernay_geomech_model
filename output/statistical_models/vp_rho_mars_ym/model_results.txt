@@ -15,7 +15,7 @@ Resample Result
 Task: ml_df
 Learner: regr.mars
 Aggr perf: mae.test.mean=4.3328767,rmse.test.rmse=6.0437328
-Runtime: 8.31819
+Runtime: 9.08041
 
 $train_perf
      mae     rmse 

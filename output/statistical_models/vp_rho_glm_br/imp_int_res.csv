@@ -1,0 +1,5 @@
+feature,importance.05,importance,importance.95,permutation.error,.interaction
+bulk_density,1,1,1,0.1350466951015772,0
+horiz_orient,1,1,1,0.1350466951015772,NA
+pred_vp,1,1,1,0.1350466951015772,NA
+shale_group,1.0055200836304303,1.013958483277174,1.0200205680513803,0.13693174213679019,0

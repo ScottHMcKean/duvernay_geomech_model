@@ -105,10 +105,36 @@ for (model_dir in list.dirs(output_dir, recursive = FALSE)){
   
   comp_resamp = bind_rows(comp_resamp, resamp_df)
 }
+
+# set factors for better plotting
+comp_tbl$set = factor(
+  comp_tbl$set, 
+  levels=c("train","test")
+  )
+
+comp_tbl$feat_set = factor(
+  comp_tbl$feat_set, 
+  levels = c("vp_rho", "vp_vs_rho", "dev_vp_rho", 
+             "dev_vp_vs_rho", "dev_conf_vp_rho",
+             "dev_conf_vp_vs_rho"
+             )
+  )
+
+comp_resamp$set = factor(
+  comp_resamp$set, 
+  levels=c("train","test")
+  )
+
+comp_resamp$feat_set = factor(
+  comp_resamp$feat_set, 
+  levels = c("vp_rho", "vp_vs_rho", "dev_vp_rho", 
+             "dev_vp_vs_rho", "dev_conf_vp_rho",
+             "dev_conf_vp_vs_rho"
+             )
+  )
 ```
 
-Plot dot plots of model performance. Four plots with feature_set + model_type
-and result
+Plot dot plots of model performance. Four plots with feature_set + model_type and result
 
 ```{r}
 ggplot(comp_tbl) +
@@ -131,7 +157,7 @@ ggplot(comp_tbl) +
   ylab("RMSE") +
   ggsave(str_c(summary_dir,'summary_rmse.pdf'), width=7, height=5)
 
-ggplot(comp_tbl) +
+ggplot(comp_tbl %>% filter(!(target == 'Brittleness' & bias > 0.03))) +
   geom_point(aes(x=model_type, y=bias, fill=feat_set, color=feat_set, shape=set), size=3) +
   scale_color_brewer(type='qual', palette = 'Paired') +
   scale_fill_brewer(type='qual', palette = 'Paired') +
@@ -141,7 +167,7 @@ ggplot(comp_tbl) +
   ylab("Bias") +
   ggsave(str_c(summary_dir,'summary_bias.pdf'), width=7, height=5)
 
-ggplot(comp_tbl) +
+ggplot(comp_tbl %>% filter(!(target == 'Brittleness' & bias > 0.03))) +
   geom_point(aes(x=model_type, y=var, fill=feat_set, color=feat_set, shape=set), size=3) +
   scale_color_brewer(type='qual', palette = 'Paired') +
   scale_fill_brewer(type='qual', palette = 'Paired') +
@@ -151,12 +177,11 @@ ggplot(comp_tbl) +
   ylab("Variance") +
   ggsave(str_c(summary_dir,'summary_variance.pdf'), width=7, height=5)
 ```
-
 Plot boxplot of resampling results
 
 ```{r}
 ggplot(comp_resamp %>% filter(target == 'ym')) +
-  geom_boxplot(aes(y=mae, x=model_type, fill=feat_set)) +
+  geom_boxplot(aes(y=mae, x=model_type, fill=feat_set), outlier.size=0.25) +
   scale_fill_brewer(type='qual', palette = 'Paired') +
   facet_wrap(. ~ set, scales = 'fixed') +
   xlab("") +
@@ -165,7 +190,7 @@ ggplot(comp_resamp %>% filter(target == 'ym')) +
   ggsave(str_c(summary_dir,'ym_mae.pdf'), width=5, height=5)
 
 ggplot(comp_resamp %>% filter(target == 'pr')) +
-  geom_boxplot(aes(y=mae, x=model_type, fill=feat_set)) +
+  geom_boxplot(aes(y=mae, x=model_type, fill=feat_set), outlier.size=0.25) +
   scale_fill_brewer(type='qual', palette = 'Paired') +
   facet_wrap(. ~ set, scales = 'fixed') +
   xlab("") +
@@ -174,7 +199,7 @@ ggplot(comp_resamp %>% filter(target == 'pr')) +
   ggsave(str_c(summary_dir,'pr_mae.pdf'), width=5, height=5)
 
 ggplot(comp_resamp %>% filter(target == 'br')) +
-  geom_boxplot(aes(y=mae, x=model_type, fill=feat_set)) +
+  geom_boxplot(aes(y=mae, x=model_type, fill=feat_set), outlier.size=0.25) +
   scale_fill_brewer(type='qual', palette = 'Paired') +
   facet_wrap(. ~ set, scales = 'fixed') +
   ylim(0,0.2) +
@@ -184,7 +209,7 @@ ggplot(comp_resamp %>% filter(target == 'br')) +
   ggsave(str_c(summary_dir,'br_mae.pdf'), width=5, height=5)
 
 ggplot(comp_resamp %>% filter(target == 'ym')) +
-  geom_boxplot(aes(y=rmse, x=model_type, fill=feat_set)) +
+  geom_boxplot(aes(y=rmse, x=model_type, fill=feat_set), outlier.size=0.25) +
   scale_fill_brewer(type='qual', palette = 'Paired') +
   facet_wrap(. ~ set, scales = 'fixed') +
   xlab("") +
@@ -193,7 +218,7 @@ ggplot(comp_resamp %>% filter(target == 'ym')) +
   ggsave(str_c(summary_dir,'ym_rmse.pdf'), width=5, height=5)
 
 ggplot(comp_resamp %>% filter(target == 'pr')) +
-  geom_boxplot(aes(y=rmse, x=model_type, fill=feat_set)) +
+  geom_boxplot(aes(y=rmse, x=model_type, fill=feat_set), outlier.size=0.25) +
   scale_fill_brewer(type='qual', palette = 'Paired') +
   facet_wrap(. ~ set, scales = 'fixed') +
   xlab("") +
@@ -202,7 +227,7 @@ ggplot(comp_resamp %>% filter(target == 'pr')) +
   ggsave(str_c(summary_dir,'pr_rmse.pdf'), width=5, height=5)
 
 ggplot(comp_resamp %>% filter(target == 'br')) +
-  geom_boxplot(aes(y=rmse, x=model_type, fill=feat_set)) +
+  geom_boxplot(aes(y=rmse, x=model_type, fill=feat_set), outlier.size=0.25) +
   scale_fill_brewer(type='qual', palette = 'Paired') +
   facet_wrap(. ~ set, scales = 'fixed') +
   ylim(0,0.25) +
@@ -210,5 +235,108 @@ ggplot(comp_resamp %>% filter(target == 'br')) +
   ylab('RSME') +
   ggtitle('Brittleness') +
   ggsave(str_c(summary_dir,'br_rmse.pdf'), width=5, height=5)
+```
 
+Load importance / interaction results
+
+```{r}
+comp_int_imp = tibble()
+for (model_dir in list.dirs(output_dir, recursive = FALSE)){
+  model_type = get_model_type(model_dir)
+
+  target = get_model_target(model_dir)
+
+  feat_set = str_replace(model_dir, '../output/statistical_models//', '') %>%
+    str_replace(., str_c('_',model_type),"") %>%
+    str_replace(., str_c('_',target),"")
+  
+  full_target = case_when(
+    target == 'ym' ~ 'Young\'s Modulus',
+    target == 'pr' ~ 'Poisson\'s Ratio',
+    TRUE ~ 'Brittleness'
+  )
+  
+  imp_int = read_csv(str_c(model_dir,'/imp_int_res.csv')) %>%
+    janitor::clean_names() %>%
+    mutate(model_type) %>%
+    mutate(target) %>%
+    mutate(feat_set) %>%
+    mutate(full_target)
+
+  comp_int_imp = bind_rows(comp_int_imp, imp_int)  
+}
+
+comp_int_imp$feat_set = factor(
+  comp_int_imp$feat_set, 
+  levels = c("vp_rho", "vp_vs_rho", "dev_vp_rho", 
+             "dev_vp_vs_rho", "dev_conf_vp_rho",
+             "dev_conf_vp_vs_rho"
+             )
+  )
+
+comp_int_imp$target = factor(
+  comp_int_imp$target, 
+  levels = c("ym", "pr", "br")
+  )
+```
+
+Summarize importance and interactions for a single plot
+
+- Random forest assigns much higher importance ratios due to its complexity
+- But at the cost of creating high interaction between features.
+
+```{r}
+ggplot(comp_int_imp %>% filter(target == 'ym')) +
+  geom_point(aes(y=importance, x=feature, color=feat_set, shape=model_type), size=2) +
+  geom_errorbar(aes(x=feature, ymin=importance_05, ymax=importance_95, color=feat_set, width=0.1)) +
+  xlab("") +
+  ggtitle('Young\'s Modulus') +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  scale_y_log10() +
+  ylab("Permuation Importance Ratio") +
+  scale_color_brewer(type='qual', palette = 'Paired') +
+  ggsave(str_c(summary_dir,'ym_imp.pdf'), width=4, height=5)
+
+ggplot(comp_int_imp %>% filter(target == 'pr')) +
+  geom_point(aes(y=importance, x=feature, color=feat_set, shape=model_type), size=2) +
+  geom_errorbar(aes(x=feature, ymin=importance_05, ymax=importance_95, color=feat_set, width=0.1)) +
+  xlab("") +
+  ggtitle('Poisson\'s Ratio') +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  scale_y_log10() +
+  ylab("Permuation Importance Ratio") +
+  scale_color_brewer(type='qual', palette = 'Paired') +
+  ggsave(str_c(summary_dir,'pr_imp.pdf'), width=4, height=5)
+
+ggplot(comp_int_imp %>% filter(target == 'br')) +
+  geom_point(aes(y=importance, x=feature, color=feat_set, shape=model_type), size=2) +
+  geom_errorbar(aes(x=feature, ymin=importance_05, ymax=importance_95, color=feat_set, width=0.1)) +
+  xlab("") +
+  ggtitle('Brittleness') +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  scale_y_log10() +
+  ylab("Permuation Importance Ratio") +
+  scale_color_brewer(type='qual', palette = 'Paired') +
+  ggsave(str_c(summary_dir,'br_imp.pdf'), width=4, height=5)
+
+ggplot(comp_int_imp) +
+  geom_point(aes(y=importance, x=feature, color=feat_set, shape=model_type), size=2) +
+  geom_errorbar(aes(x=feature, ymin=importance_05, ymax=importance_95, color=feat_set, width=0.1)) +
+  xlab("") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  scale_y_log10() +
+  ylab("Permuation Importance Ratio") +
+  facet_wrap(. ~ target, scales='fixed') + 
+  scale_color_brewer(type='qual', palette = 'Paired') +
+  ggsave(str_c(summary_dir,'importance.pdf'), width=7, height=5)
+
+ggplot(comp_int_imp) +
+  geom_point(aes(y=interaction, x=feature, color=feat_set, shape=model_type), size=2) +
+  scale_y_continuous(labels = function(x) format(x, scientific = TRUE, digits=3)) +
+  xlab("") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  ylab("Interaction") +
+  facet_wrap(. ~ target, scales='fixed') + 
+  scale_color_brewer(type='qual', palette = 'Paired') +
+  ggsave(str_c(summary_dir,'interaction.pdf'), width=7, height=5)
 ```

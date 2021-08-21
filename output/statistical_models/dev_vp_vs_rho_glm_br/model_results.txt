@@ -1,34 +1,34 @@
 $train_mean_bias
-[1] 0.02797857
+[1] 0.02761425
 
 $train_mean_variance
-[1] 0.0001151804
+[1] 0.0001142611
 
 $test_mean_bias
-[1] 0.02934051
+[1] 0.02895
 
 $test_mean_variance
-[1] 0.0001224404
+[1] 0.0001215165
 
 $resample_obj
 Resample Result
 Task: ml_df
 Learner: regr.glmnet
-Aggr perf: mae.test.mean=0.1345244,rmse.test.rmse=0.1712907
-Runtime: 15.9526
+Aggr perf: mae.test.mean=0.1341938,rmse.test.rmse=0.1701470
+Runtime: 16.3021
 
 $train_perf
       mae      rmse 
-0.1315223 0.1672361 
+0.1311755 0.1659776 
 
 $test_perf
       mae      rmse 
-0.1442154 0.1860263 
+0.1442920 0.1862305 
 
 $model
 Model for learner.id=regr.glmnet; learner.class=regr.glmnet
 Trained on: task.id = train_df; obs = 273; features = 6
-Hyperparameters: s=0.01,alpha=0.791,lambda=0.01
+Hyperparameters: s=0.01,alpha=0.812,lambda=0.01
 
 $tuned_learner
 Learner regr.glmnet from package glmnet
@@ -37,6 +37,6 @@ Name: GLM with Lasso or Elasticnet Regularization; Short name: glmnet
 Class: regr.glmnet
 Properties: numerics,factors,ordered,weights
 Predict-Type: response
-Hyperparameters: s=0.01,alpha=0.791,lambda=0.01
+Hyperparameters: s=0.01,alpha=0.812,lambda=0.01
 
 

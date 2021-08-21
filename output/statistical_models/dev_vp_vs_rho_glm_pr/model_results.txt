@@ -1,29 +1,29 @@
 $train_mean_bias
-[1] 0.002121351
+[1] 0.002004314
 
 $train_mean_variance
-[1] 7.305786e-06
+[1] 6.708548e-06
 
 $test_mean_bias
-[1] 0.002254297
+[1] 0.002106116
 
 $test_mean_variance
-[1] 7.667968e-06
+[1] 7.037627e-06
 
 $resample_obj
 Resample Result
 Task: ml_df
 Learner: regr.glmnet
-Aggr perf: mae.test.mean=0.0335331,rmse.test.rmse=0.0474794
-Runtime: 16.5535
+Aggr perf: mae.test.mean=0.0332165,rmse.test.rmse=0.0458924
+Runtime: 16.6453
 
 $train_perf
        mae       rmse 
-0.03297302 0.04693807 
+0.03268842 0.04546449 
 
 $test_perf
        mae       rmse 
-0.03305577 0.04100204 
+0.03305889 0.04099693 
 
 $model
 Model for learner.id=regr.glmnet; learner.class=regr.glmnet
