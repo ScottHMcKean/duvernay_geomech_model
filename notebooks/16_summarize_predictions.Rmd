@@ -60,9 +60,10 @@ facies = c("shale", "carb")
 models = c("glm", "mars", "rf")
 ```
 
-Subset predictions and make summary graphs / table
+Subset predictions and make summary graphs / table. This takes a long time so
+don't run unless necessary.
 
-```{r}
+```{r, eval=False}
 subset_options = expand.grid(
   feat_sets=feat_sets, targets=targets, facies=facies, models=models,
   stringsAsFactors=FALSE)
@@ -237,6 +238,12 @@ for (target in c('br', 'pr', 'ym')){
        str_replace_all(., '_rf', '')
        )
   
+  comb_df$feat = factor(
+    comb_df$feat, 
+    levels=c("vp_rho", "vp_vs_rho", "rock_physics", "dev_vp_rho", "dev_vp_vs_rho", 
+             "dev_conf_vp_rho", "dev_conf_vp_vs_rho")
+    )
+  
   if (target == 'br'){
     ylims=c(0,0.6)
   } else if (target == 'pr'){
@@ -247,7 +254,7 @@ for (target in c('br', 'pr', 'ym')){
   
   plt = ggplot(comb_df) +
       geom_boxplot(
-        aes(x=reorder(feat, desc(feat)), y=prediction, fill=model_type),
+        aes(x=feat, y=prediction, fill=model_type),
         outlier.size=0.5
         )
   

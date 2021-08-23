@@ -25,6 +25,8 @@ sv_sf = st_read('../data/sv_sf.GeoJSON') %>%
   drop_na() %>% 
   select(datum_mbgs)
 
+logs_sf = st_read('../data/facies_data.GeoJSON')
+
 datum_mbgs = st_rasterize(sv_sf, template = st_as_stars(study_raster)) %>% 
   as(., 'Raster')
 ```
@@ -111,6 +113,11 @@ grad_to_abs_val <- function(x, datum_mbgs){
   x * datum_mbgs@data@values / 1000
 }
 
+# remove na mask
+mask_na <- function(x, datum_mbgs){
+  x * datum_mbgs@data@values / datum_mbgs@data@values
+}
+
 stress_abs = stress
 stress_abs@data <- stress@data %>%
   mutate(across(contains('sv'), grad_to_abs_val, datum_mbgs)) %>%
@@ -119,6 +126,15 @@ stress_abs@data <- stress@data %>%
   mutate(across(contains('shmax'), grad_to_abs_val, datum_mbgs)) %>%
   mutate(across(contains('sigc'), grad_to_abs_val, datum_mbgs)) %>%
   mutate(across(contains('sigd'), grad_to_abs_val, datum_mbgs)) %>%
+  na_if(0)
+
+stress@data <- stress@data %>%
+  mutate(across(contains('sv'), mask_na, datum_mbgs)) %>%
+  mutate(across(contains('shmin'), mask_na, datum_mbgs)) %>%
+  mutate(across(contains('pp'), mask_na, datum_mbgs)) %>%
+  mutate(across(contains('shmax'), mask_na, datum_mbgs)) %>%
+  mutate(across(contains('sigc'), mask_na, datum_mbgs)) %>%
+  mutate(across(contains('sigd'), mask_na, datum_mbgs)) %>%
   na_if(0)
 ```
 
@@ -178,6 +194,185 @@ col = 'sigc.sim2'
 ggplot(data = sp_col_to_df(stress_abs, col)) +
   geom_tile(aes(x=x,y=y, fill=get(col)))
 ```
+Plot the mean and standard deviation of the stress features
+
+```{r}
+subset_inputs <- function(inputs, feature){
+  inputs@data <- inputs@data %>% 
+    select(contains(feature))
+  inputs
+}
+
+for (subset_name in c('sv','shmin','shmax')){
+file_prefix = str_c("../output/geostat_input_summaries/", subset_name)
+
+stress_subset = subset_inputs(stress, subset_name)
+
+subset_summary = stress_subset@data %>%
+    rowwise() %>%
+    summarize(
+      mean = mean(c_across()),
+      sd = sd(c_across()),
+      p05 = quantile(c_across(), 0.05, na.rm=TRUE),
+      p95 = quantile(c_across(), 0.95, na.rm=TRUE)
+    ) %>%
+    mutate(ci90 = p95-p05) %>%
+    mutate(x = stress_subset@coords[,1]) %>%
+    mutate(y = stress_subset@coords[,2])
+
+ggplot(data = subset_summary) +
+    geom_tile(aes(x=x, y=y, fill=mean)) +
+    geom_sf(data=logs_sf, size = 0.75) +
+    scale_fill_viridis_c(option='D') +
+    coord_sf() +
+    theme_minimal() +
+    ylab("") + xlab("") +
+    ggtitle(str_c(subset_name, " mean")) +
+    ggsave(str_c(file_prefix, "_meanplot.pdf"))
+  
+  ggplot(data = subset_summary) +
+    geom_tile(aes(x=x, y=y, fill=sd)) +
+    geom_sf(data=logs_sf, size = 0.75) +
+    scale_fill_viridis_c(option='E') +
+    coord_sf() +
+    theme_minimal() +
+    ylab("") + xlab("") +
+    ggtitle(str_c(subset_name, " sd")) +
+    ggsave(str_c(file_prefix, "_sdplot.pdf"))
+  
+  ggplot(data = subset_summary) +
+    geom_tile(aes(x=x, y=y, fill=ci90)) +
+    geom_sf(data=logs_sf, size = 0.75) +
+    scale_fill_viridis_c(option='C') +
+    coord_sf() +
+    theme_minimal() +
+    ylab("") + xlab("") +
+    ggtitle(str_c(subset_name, " ci90")) +
+    ggsave(str_c(file_prefix, "_ci90plot.pdf"))
+  }
+
+```
+Do shale logs - need to set limits for non-physical predictions in Vp. 
+Vs and rho look okay.
+Revisit the input parameters to make sure what's going on is physical, 
+suspect that it may due to a) older vp logs directly beside newer ones causing
+some numerical instabilities, or b) outliers and data busts. 
+
+```{r}
+subset_name = 'vp'
+log_subset_sf = logs_sf %>% filter(facies == 'dv_shale')
+for (subset_name in c("vp", "vs", "rho")){
+  file_prefix = str_c("../output/geostat_input_summaries/", "shale_", subset_name)
+  stress_subset = subset_inputs(shale_logs_v, subset_name)
+  
+  if (subset_name == 'vp'){
+    mean_lim = c(4000, 6500)
+    sd_lim = c(0,2000)
+    ci90_lim = c(0,2000)
+  } else {
+    mean_lim = NULL
+    sd_lim = NULL
+    ci90_lim = NULL
+  }
+  
+  quantile(subset_summary$sd, na.rm=TRUE)
+  
+  subset_summary = stress_subset@data %>%
+      rowwise() %>%
+      summarize(
+        mean = mean(c_across()),
+        sd = sd(c_across()),
+        p05 = quantile(c_across(), 0.05, na.rm=TRUE),
+        p95 = quantile(c_across(), 0.95, na.rm=TRUE)
+      ) %>%
+      mutate(ci90 = p95-p05) %>%
+      mutate(x = stress_subset@coords[,1]) %>%
+      mutate(y = stress_subset@coords[,2])
+  
+  ggplot(data = subset_summary) +
+      geom_tile(aes(x=x, y=y, fill=mean)) +
+      geom_sf(data=log_subset_sf, size = 0.75) +
+      scale_fill_viridis_c(limits=mean_lim, oob=scales::squish, option='D') +
+      coord_sf() +
+      theme_minimal() +
+      ylab("") + xlab("") +
+      ggtitle(str_c(subset_name, " mean")) +
+      ggsave(str_c(file_prefix, "_meanplot.pdf"))
+    
+  ggplot(data = subset_summary) +
+    geom_tile(aes(x=x, y=y, fill=sd)) +
+    geom_sf(data=log_subset_sf, size = 0.75) +
+    scale_fill_viridis_c(limits=sd_lim, oob=scales::squish, option='E') +
+    coord_sf() +
+    theme_minimal() +
+    ylab("") + xlab("") +
+    ggtitle(str_c(subset_name, " sd")) +
+    ggsave(str_c(file_prefix, "_sdplot.pdf"))
+  
+  ggplot(data = subset_summary) +
+    geom_tile(aes(x=x, y=y, fill=ci90)) +
+    geom_sf(data=log_subset_sf, size = 0.75) +
+    scale_fill_viridis_c(limits=ci90_lim, oob=scales::squish, option='C') +
+    coord_sf() +
+    theme_minimal() +
+    ylab("") + xlab("") +
+    ggtitle(str_c(subset_name, " ci90")) +
+    ggsave(str_c(file_prefix, "_ci90plot.pdf"))
+}
+```
+
+
+```{r}
+log_subset_sf = logs_sf %>% filter(facies == 'dv_carb')
+for (subset_name in c("vp", "vs", "rho")){
+  file_prefix = str_c("../output/geostat_input_summaries/", "carb_", subset_name)
+  stress_subset = subset_inputs(carb_logs_v, subset_name)
+  
+  quantile(subset_summary$sd, na.rm=TRUE)
+  
+  subset_summary = stress_subset@data %>%
+      rowwise() %>%
+      summarize(
+        mean = mean(c_across()),
+        sd = sd(c_across()),
+        p05 = quantile(c_across(), 0.05, na.rm=TRUE),
+        p95 = quantile(c_across(), 0.95, na.rm=TRUE)
+      ) %>%
+      mutate(ci90 = p95-p05) %>%
+      mutate(x = stress_subset@coords[,1]) %>%
+      mutate(y = stress_subset@coords[,2])
+  
+  ggplot(data = subset_summary) +
+      geom_tile(aes(x=x, y=y, fill=mean)) +
+      geom_sf(data=log_subset_sf, size = 0.75) +
+      scale_fill_viridis_c(limits=mean_lim, oob=scales::squish, option='D') +
+      coord_sf() +
+      theme_minimal() +
+      ylab("") + xlab("") +
+      ggtitle(str_c(subset_name, " mean")) +
+      ggsave(str_c(file_prefix, "_meanplot.pdf"))
+    
+  ggplot(data = subset_summary) +
+    geom_tile(aes(x=x, y=y, fill=sd)) +
+    geom_sf(data=log_subset_sf, size = 0.75) +
+    scale_fill_viridis_c(limits=sd_lim, oob=scales::squish, option='E') +
+    coord_sf() +
+    theme_minimal() +
+    ylab("") + xlab("") +
+    ggtitle(str_c(subset_name, " sd")) +
+    ggsave(str_c(file_prefix, "_sdplot.pdf"))
+  
+  ggplot(data = subset_summary) +
+    geom_tile(aes(x=x, y=y, fill=ci90)) +
+    geom_sf(data=log_subset_sf, size = 0.75) +
+    scale_fill_viridis_c(limits=ci90_lim, oob=scales::squish, option = 'C') +
+    coord_sf() +
+    theme_minimal() +
+    ylab("") + xlab("") +
+    ggtitle(str_c(subset_name, " ci90")) +
+    ggsave(str_c(file_prefix, "_ci90plot.pdf"))
+}
+```
 Iterate through each of the 1000 realizations, load the 54 models, and make 
 predictions for shale and carbonate. This loop takes a long time to run...
 
@@ -228,9 +423,9 @@ for (sim in sim_vec){
 
 saveRDS(predictions,'../output/geostatistical_models/predictions.rds')
 ```
+
 Plot some predictions - looks as expected, with lots of variance when the 
-geostatistical variance is applied the models! This is good and will be very
-interesting to write up.
+geostatistical variance is applied the models.
 
 ```{r}
 colnames(predictions@data)

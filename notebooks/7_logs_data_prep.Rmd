@@ -99,16 +99,30 @@ colnames(comb_las_df) <- colnames(comb_las_df) %>% str_replace(., '_qcgeo', '')
 comb_las_df %>% fwrite(., '../data-raw/logs_df.csv')
 ```
 
+Do some basic filtering of logs here to:
+1. Replace NAs with zero for proper filtering
+2. remove badhole observations
+3. filter very low DTC values (< 100 us/m)
+4. filter very high DTC values (> 350 us/m)
+
+The DTC values were causing some major non-physical results downstream, so 
+we filter them using the IQR outlier method. This has the added effect that when 
+we remove these observations, outlying DTS / RHOB values are also removed.
+
 ```{r}
-comb_las_df <- fread('../data-raw/logs_df.csv')
+comb_las_df <- fread('../data-raw/logs_df.csv') %>%
+  mutate_at(c("badhole","dtc_us_m","dtc_us_m","gr_gapi"), ~replace(., is.na(.), 0)) %>%
+  filter(badhole == 0) %>%
+  filter(dtc_us_m > 100 & dtc_us_m < 350)
 
 log_summary = comb_las_df %>%
   group_by(uwi) %>%
   dplyr::summarise(rows = n(), 
-            rhob = sum(na.omit(rhob_k_m) > 0),
-            dtc = sum(na.omit(dtc_us_m) > 0),
-            dts = sum(na.omit(dts_us_m) > 0),
-            gr = sum(na.omit(gr_gapi) > 0)
+            rhob = sum(na.omit(rhob_k_m) < 0),
+            badhole = sum(na.omit(badhole) > 0),
+            dtc = sum(na.omit(dtc_us_m) < 0),
+            dts = sum(na.omit(dts_us_m) < 0),
+            gr = sum(na.omit(gr_gapi) < 0)
             )
 ```
 
@@ -117,13 +131,12 @@ Carbonate for geostatistical simulation. Log these picks in data/dv_b_tops.csv
 
 ```{r}
 plot_ly(
-  comb_las_df %>% filter(uwi=="100010506418W500"), x = ~elev_masl, y = ~dtc_us_m, 
+  comb_las_df %>% filter(uwi=="100020906418W500"), x = ~elev_masl, y = ~dtc_us_m, 
   name = 'DTC', type = 'scatter', mode = 'lines', orientation='h') %>% 
   add_trace(y = ~gr_gapi, name = 'GR', mode = 'lines+markers')
 ```
 
-Read in the top picks and intersect the logs with each top and bottom for further isolation and flattening across the study area. Now aggregation of the logs 
-into 2D summaries is straightforward.
+Read in the top picks and intersect the logs with each top and bottom for further isolation and flattening across the study area. Now aggregation of the logs into 2D summaries is straightforward.
 
 ```{r}
 dv_carb_tops = read_csv('../data/dv_carb_picks.csv')
