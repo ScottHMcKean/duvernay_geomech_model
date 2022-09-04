@@ -15,6 +15,7 @@ get_model_type <- function(model_dir){
   } else if (str_detect(model_dir,'glm')){
     model_type = 'glm'
   } else {
+    
     model_type = 'mars'
   }
   model_type
@@ -62,6 +63,9 @@ output_dir = '../output/statistical_models/'
 comp_tbl = tibble()
 comp_resamp = tibble()
 for (model_dir in list.dirs(output_dir, recursive = FALSE)){
+    
+  if (str_replace(model_dir, '../output/statistical_models//', '') == "wave") next
+  
   model_type = get_model_type(model_dir)
 
   target = get_model_target(model_dir)
@@ -134,6 +138,24 @@ comp_resamp$feat_set = factor(
   )
 ```
 
+Get Wave Equation Results and add to comp_resamp
+
+```{R}
+wave_results = read_rds(paste0(output_dir,"/wave/resample_results.rds"))
+
+comp_resamp = bind_rows(comp_resamp, wave_results %>% select(-correction))
+
+mean_ym_correction = wave_results %>%
+  filter(target == "ym") %>%
+  summarize_at("correction", mean) %>%
+  pull(correction)
+
+mean_pr_correction = wave_results %>%
+  filter(target == "pr") %>%
+  summarize_at("correction", mean) %>%
+  pull(correction)
+```
+
 Plot dot plots of model performance. Four plots with feature_set + model_type and result
 
 ```{r}
@@ -185,27 +207,29 @@ ggplot(comp_resamp %>% filter(target == 'ym')) +
   scale_fill_brewer(type='qual', palette = 'Paired') +
   facet_wrap(. ~ set, scales = 'fixed') +
   xlab("") +
+  coord_cartesian(ylim=c(0,7)) +
   ylab('MAE') +
-  ggtitle('Young\'s Modulus (GPa)') +
-  ggsave(str_c(summary_dir,'ym_mae.pdf'), width=5, height=5)
+  ggtitle('(a) Young\'s Modulus (GPa)') +
+  ggsave(str_c(summary_dir,'ym_mae.pdf'), width=6, height=6)
 
 ggplot(comp_resamp %>% filter(target == 'pr')) +
   geom_boxplot(aes(y=mae, x=model_type, fill=feat_set), outlier.size=0.25) +
   scale_fill_brewer(type='qual', palette = 'Paired') +
   facet_wrap(. ~ set, scales = 'fixed') +
   xlab("") +
+  coord_cartesian(ylim=c(0,0.05)) +
   ylab('MAE') +
-  ggtitle('Poisson\'s Ratio') +
+  ggtitle('(b) Poisson\'s Ratio') +
   ggsave(str_c(summary_dir,'pr_mae.pdf'), width=5, height=5)
 
 ggplot(comp_resamp %>% filter(target == 'br')) +
   geom_boxplot(aes(y=mae, x=model_type, fill=feat_set), outlier.size=0.25) +
   scale_fill_brewer(type='qual', palette = 'Paired') +
   facet_wrap(. ~ set, scales = 'fixed') +
-  ylim(0,0.2) +
+  coord_cartesian(ylim=c(0,0.2)) +
   xlab("") +
   ylab('MAE') +
-  ggtitle('Brittleness') +
+  ggtitle('(c) Brittleness') +
   ggsave(str_c(summary_dir,'br_mae.pdf'), width=5, height=5)
 
 ggplot(comp_resamp %>% filter(target == 'ym')) +
@@ -213,8 +237,9 @@ ggplot(comp_resamp %>% filter(target == 'ym')) +
   scale_fill_brewer(type='qual', palette = 'Paired') +
   facet_wrap(. ~ set, scales = 'fixed') +
   xlab("") +
+  coord_cartesian(ylim=c(0,7)) +
   ylab('RSME') +
-  ggtitle('Young\'s Modulus (GPa)') +
+  ggtitle('(a) Young\'s Modulus (GPa)') +
   ggsave(str_c(summary_dir,'ym_rmse.pdf'), width=5, height=5)
 
 ggplot(comp_resamp %>% filter(target == 'pr')) +
@@ -222,18 +247,19 @@ ggplot(comp_resamp %>% filter(target == 'pr')) +
   scale_fill_brewer(type='qual', palette = 'Paired') +
   facet_wrap(. ~ set, scales = 'fixed') +
   xlab("") +
+  coord_cartesian(ylim=c(0,0.05)) +
   ylab('RSME') +
-  ggtitle('Poisson\'s Ratio') +
+  ggtitle('(b) Poisson\'s Ratio') +
   ggsave(str_c(summary_dir,'pr_rmse.pdf'), width=5, height=5)
 
 ggplot(comp_resamp %>% filter(target == 'br')) +
   geom_boxplot(aes(y=rmse, x=model_type, fill=feat_set), outlier.size=0.25) +
   scale_fill_brewer(type='qual', palette = 'Paired') +
   facet_wrap(. ~ set, scales = 'fixed') +
-  ylim(0,0.25) +
+  coord_cartesian(ylim=c(0,0.2)) +
   xlab("") +
   ylab('RSME') +
-  ggtitle('Brittleness') +
+  ggtitle('(c) Brittleness') +
   ggsave(str_c(summary_dir,'br_rmse.pdf'), width=5, height=5)
 ```
 

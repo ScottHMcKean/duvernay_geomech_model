@@ -30,7 +30,6 @@ mldf_wres = read_csv("../data/merged_tests_w_residual.csv") %>%
 ```
 
 ```{r}
-
 feat_set = c('pred_vp', 'bulk_density', 'horiz_orient', 'shale_group')
 feat_pref = 'vp_rho'
 
@@ -39,6 +38,48 @@ generate_models(mldf_nores, feats = feat_set,
 
 generate_models(mldf_wres, feats = feat_set, 
   targets = c("brittleness"), feat_prefix = feat_pref)
+```
+
+Get the Wave Equation results - this is a bit of a 'model' hack as we simply
+optimize the correction factor and bootstrap to get uncertainty. This provides
+the fairest comparison to statistical models.
+
+```{r}
+n = 1000
+mc_cv = crossv_mc(mldf_nores, n, test=0.9)
+
+dfs <- vector(mode = "list", length = n)
+for (iter in 1:n){
+  train = mldf_nores[mc_cv$train[[iter]]$idx,]
+  test = mldf_nores[mc_cv$test[[iter]]$idx,]
+  opt_pr_correction = optimize(pr_correction_loss, c(-1,1), test)$minimum
+  train_pr_pred = wave_pr_w_correction(train, opt_pr_correction)
+  test_pr_pred = wave_pr_w_correction(test, opt_pr_correction)
+  train_pr_mae = mean(abs(train_pr_pred - train$poisson_ratio))
+  train_pr_rmse = sqrt(mean((train_pr_pred - train$poisson_ratio)^2))
+  test_pr_mae = mean(abs(test_pr_pred - test$poisson_ratio))
+  test_pr_rmse = sqrt(mean((test_pr_pred - test$poisson_ratio)^2))
+  opt_ym_correction = optimize(ym_correction_loss, c(-100,100), test)$minimum
+  train_ym_pred = wave_ym_w_correction(train, opt_ym_correction)
+  test_ym_pred = wave_ym_w_correction(test, opt_ym_correction)
+  train_ym_mae = mean(abs(train_ym_pred - train$youngs_modulus))
+  train_ym_rmse = sqrt(mean((train_ym_pred - train$youngs_modulus)^2))
+  test_ym_mae = mean(abs(test_ym_pred - test$youngs_modulus))
+  test_ym_rmse = sqrt(mean((test_ym_pred - test$youngs_modulus)^2))
+  dfs[[iter]] = data.frame(
+    iter = c(iter,iter, iter, iter),
+    correction = c(opt_pr_correction, opt_pr_correction, opt_ym_correction, opt_ym_correction),
+    mae = c(train_pr_mae, test_pr_mae, train_ym_mae, test_ym_mae),
+    rmse = c(train_pr_rmse, test_pr_rmse, train_ym_rmse, test_ym_rmse),
+    set = c('train', 'test', 'train', 'test'),
+    model_type = c('WAVE', 'WAVE','WAVE', 'WAVE'),
+    target = c("pr", "pr", "ym", "ym"),
+    feat_set = c("vp_vs_rho", "vp_vs_rho", "vp_vs_rho", "vp_vs_rho")
+  )
+}
+
+wave_results = bind_rows(dfs)
+write_rds(wave_results, '../output/statistical_models/wave/resample_results.rds')
 ```
 
 ```{r}

@@ -317,3 +317,56 @@ generate_models <- function(
     )
   }
 }
+
+#' Wave Equation for Poisson Ratio with a correction factor
+#'
+#' @param df the data (dataframe)
+#' @param correction_factor scalar correction factor (numeric)
+#' @return vector, predicted poisson ratio values
+#' @export
+wave_pr_w_correction <- function(df, correction_factor){
+  (df$pred_vp^2-2*df$pred_vs^2)/(2*(df$pred_vp^2-df$pred_vs^2)) - correction_factor
+}
+
+#' Wave Equation for Poisson Ratio with a correction factor
+#'
+#' @param df the data (dataframe)
+#' @param correction_factor scalar correction factor (numeric)
+#' @return vector, predicted poisson ratio values
+#' @export
+wave_ym_w_correction <- function(df, correction_factor){
+  df$bulk_density*df$pred_vs^2*((3*df$pred_vp^2 - 4*df$pred_vs^2)/(df$pred_vp^2-df$pred_vs^2))/1E6 - correction_factor
+}
+
+
+#' Average of Mean Absolute Error and RMSE
+#' of Wave Equation PR prediction with a correction factor
+#' (to match statistical models)
+#' Used for cross validated optimization
+#'
+#' @param df the data (dataframe)
+#' @param correction_factor scalar correction factor (numeric)
+#' @return mean absolute error
+#' @export
+pr_correction_loss <- function(correction_factor=0.01, df){
+  rock_physics_pr = wave_pr_w_correction(df, correction_factor)
+  mae = mean(abs(rock_physics_pr - df$poisson_ratio))
+  rmse = sqrt(mean((rock_physics_pr - df$poisson_ratio)^2))
+  mean(mae, rmse)
+}
+
+#' Average of Mean Absolute Error and RMSE
+#' of Wave Equation YM prediction with a correction factor
+#' (to match statistical models)
+#' Used for cross validated optimization
+#'
+#' @param df the data (dataframe)
+#' @param correction_factor scalar correction factor (numeric)
+#' @return mean absolute error
+#' @export
+ym_correction_loss <- function(correction_factor=1, df){
+  rock_physics_ym = wave_ym_w_correction(df, correction_factor)
+  mae = mean(abs(rock_physics_ym - df$youngs_modulus))
+  rmse = sqrt(mean((rock_physics_ym - df$youngs_modulus)^2))
+  mean(mae, rmse)
+}
