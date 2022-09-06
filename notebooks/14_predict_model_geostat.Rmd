@@ -76,10 +76,12 @@ for (sim in sim_vec){
   sigma_3 = ifelse(sv > shmin, shmin, sv)
   # stress polygon calc
   sigma_1 = (sigma_3 * r - sigma_2)/(r - 1)
+  sig_ceq = (sigma_1 + sigma_2 + sigma_3)/2 - 0.7 * pp
+  sig_deq = sqrt(0.5*((sigma_1 - sigma_2)^2 + (sigma_2 - sigma_3)^2 + (sigma_3 - sigma_1)^2))
   stress@data[, paste0("shmax.", sim)] <- sigma_1
   # confining and deviatoric stress calcs
-  stress@data[, paste0("sigc.", sim)] <- (sigma_2 + sigma_3)/2 - 0.7 * pp
-  stress@data[, paste0("sigd.", sim)] <- sigma_1 - sigma_3
+  stress@data[, paste0("sigc.", sim)] <- sig_ceq
+  stress@data[, paste0("sigd.", sim)] <- sig_deq
 }
 ```
 
@@ -190,7 +192,7 @@ sp_col_to_df <- function(spdf, col){
   df_out
 }
 
-col = 'sigc.sim2'
+col = 'sigc.sim5'
 ggplot(data = sp_col_to_df(stress_abs, col)) +
   geom_tile(aes(x=x,y=y, fill=get(col)))
 ```
@@ -412,12 +414,20 @@ for (sim in sim_vec){
   # cycle through models and make predictions for shale and carbonate
   # load model(s)
   for (dir in list.dirs("../output/statistical_models/",recursive = FALSE)){
+    print(dir)
+    tryCatch({
+      if (str_replace(dir, '../output/statistical_models//', '') == "wave") next
     model_name = tail(str_split(dir,'/')[[1]],1)
     model = readRDS(paste0(dir,'/resample_results.rds'))$model
     predictions@data[, paste0('shale.',model_name,".",sim)] <- predict(
       model, newdata=shale_df_out %>% select(model$features))$data$response * na_mask
     predictions@data[, paste0('carb.',model_name,".",sim)] <- predict(
-      model, newdata=carb_df_out %>% select(model$features))$data$response * na_mask
+      model, newdata=carb_df_out %>% select(model$features))$data$response * na_mask  
+    },
+    finally = {
+      next
+    })
+    
   }
 }
 
@@ -430,16 +440,10 @@ geostatistical variance is applied the models.
 ```{r}
 colnames(predictions@data)
 
-col = 'carb.dev_conf_vp_rho_rf_br.sim3'
+col = 'carb.dev_conf_vp_vs_rho_glm_pr.sim1'
 
 ggplot(data = sp_col_to_df(predictions, col)) +
   geom_tile(aes(x=x,y=y, fill=get(col)))
-
-```
-
-- Summarize predictions (mean + sd + CI90)
-
-```{r}
 
 ```
 

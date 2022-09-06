@@ -15,7 +15,7 @@ Resample Result
 Task: ml_df
 Learner: regr.glmnet
 Aggr perf: mae.test.mean=0.0331244,rmse.test.rmse=0.0455484
-Runtime: 19.1534
+Runtime: 32.404
 
 $train_perf
        mae       rmse 

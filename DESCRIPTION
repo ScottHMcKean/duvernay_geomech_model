@@ -25,6 +25,7 @@ Depends:
     mlr,
     modelr,
     tidyverse,
-    sf
+    sf,
+    stars
 Suggests:
     usethis

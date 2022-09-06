@@ -1,21 +1,21 @@
 $train_mean_bias
-[1] 0.020779
+[1] 0.02075526
 
 $train_mean_variance
-[1] 0.001027441
+[1] 0.001024561
 
 $test_mean_bias
-[1] 0.02416838
+[1] 0.02423183
 
 $test_mean_variance
-[1] 0.001182008
+[1] 0.001180654
 
 $resample_obj
 Resample Result
 Task: ml_df
 Learner: regr.mars
-Aggr perf: mae.test.mean=0.1166418,rmse.test.rmse=0.1554618
-Runtime: 8.92917
+Aggr perf: mae.test.mean=0.1166556,rmse.test.rmse=0.1556658
+Runtime: 15.303
 
 $train_perf
       mae      rmse 

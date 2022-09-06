@@ -129,7 +129,7 @@ plot_importance_interaction <- function(predictor, prefix, repetitions=500){
   imp_int_res = importance$results %>%
     merge(., data.frame(interact$results), by.x='feature', by.y='.feature')
 
-  write_csv(imp_int_res, file = paste0('../output/',prefix,"/imp_int_res.csv"))
+  write_csv(imp_int_res, paste0('../output/',prefix,"/imp_int_res.csv"))
 
   TRUE
 }

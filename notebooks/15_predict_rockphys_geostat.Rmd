@@ -11,6 +11,8 @@ library(duvernaygeomechmodel)
 library(stars)
 study_bounds = st_read('../data/study_dv_bounds.GeoJSON')
 study_raster = raster::raster('../data/study_raster.tif')
+ym_correction = 17.66
+pr_correction = 0.0145
 ```
 
 Rasterize sv_sf for mbgs datum (needed for consistent NA classification)
@@ -86,8 +88,6 @@ Iterate through each of the 1000 realizations and make predictions for shale and
 
 ```{r}
 for (sim in sim_vec){
-  print(sim)
-  
   # shale logs
   pred_vs = shale_logs_v@data[, paste0('vs.',sim)]
   pred_vp = shale_logs_v@data[, paste0('vp.',sim)]
@@ -96,9 +96,9 @@ for (sim in sim_vec){
   na_mask = ifelse(is.na(pred_vs), NA, 1)
   shale_df_out = data.frame(pred_vs, pred_vp, bulk_density) %>%
     mutate(shale.rock_physics_pr = 
-             (pred_vp^2-2*pred_vs^2)/(2*(pred_vp^2-pred_vs^2))) %>%
+             (pred_vp^2-2*pred_vs^2)/(2*(pred_vp^2-pred_vs^2)) - pr_correction) %>%
     mutate(shale.rock_physics_ym = 
-             bulk_density*pred_vs^2*((3*pred_vp^2 - 4*pred_vs^2)/(pred_vp^2-pred_vs^2))/1E6)
+             bulk_density*pred_vs^2*((3*pred_vp^2 - 4*pred_vs^2)/(pred_vp^2-pred_vs^2))/1E6 - ym_correction)
 
   # carbonate logs
   pred_vs = carb_logs_v@data[, paste0('vs.',sim)]
@@ -107,9 +107,9 @@ for (sim in sim_vec){
   
   carb_df_out = data.frame(pred_vs, pred_vp, bulk_density) %>%
     mutate(carb.rock_physics_pr = 
-             (pred_vp^2-2*pred_vs^2)/(2*(pred_vp^2-pred_vs^2))) %>%
+             (pred_vp^2-2*pred_vs^2)/(2*(pred_vp^2-pred_vs^2)) - pr_correction) %>%
     mutate(carb.rock_physics_ym = 
-             bulk_density*pred_vs^2*((3*pred_vp^2 - 4*pred_vs^2)/(pred_vp^2-pred_vs^2))/1E6)
+             bulk_density*pred_vs^2*((3*pred_vp^2 - 4*pred_vs^2)/(pred_vp^2-pred_vs^2))/1E6 - ym_correction)
   
   # predict for shale and carbonate
   predictions@data[, paste0("shale.rock_physics_pr",".",sim)] <- shale_df_out %>%
